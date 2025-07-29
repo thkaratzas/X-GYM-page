@@ -1838,8 +1838,29 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
 
     // ➕ Καταγραφή στα mockData για την Ημέρα
     if (!mockData[dateStr]) mockData[dateStr] = [];
-    mockData[dateStr].push({ id, name, gender, time });
-    saveData();
+
+let alreadyScannedRecently = false;
+
+// Έλεγχος αν το ίδιο ID έχει ξανακαταγραφεί σήμερα
+for (let entry of mockData[dateStr]) {
+  if (entry.id === id) {
+    const [prevHour, prevMin] = entry.time.split(":").map(Number);
+    const prevTime = new Date();
+    prevTime.setHours(prevHour, prevMin, 0, 0);
+
+    const diffMs = now - prevTime;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours < 5) {
+      alreadyScannedRecently = true;
+      break;
+    }
+  }
+}
+
+if (!alreadyScannedRecently) {
+  mockData[dateStr].push({ id, name, gender, time });
+  saveData();
+}
 
     // 🔄 Καθάρισμα input
     qrInput.value = "";
