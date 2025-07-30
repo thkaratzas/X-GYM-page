@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Καταγραφή Παρουσίας</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: black;
+      color: white;
+      background-image: url("https://i.postimg.cc/pT6cNg9q/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B-3.jpg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .overlay {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 1;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 15px;
+      background-color: rgba(0, 0, 0, 0.6);
+      z-index: 3;
+      animation: fadeInDown 0.6s ease;
+    }
+
+    .dropbtn, .home-btn {
+      background: linear-gradient(to right, #222, #444);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+    }
+
+    .dropbtn:hover, .home-btn:hover {
+      background: linear-gradient(to right, #555, #777);
+      transform: scale(1.05);
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-content {
+      opacity: 0;
+      visibility: hidden;
+      position: absolute;
+      top: 45px;
+      background-color: #111;
+      min-width: 180px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+      z-index: 10;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .dropdown:hover .dropdown-content {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .dropdown-content button {
+      background-color: #111;
+      color: white;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .dropdown-content button:hover {
+      background-color: #333;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      top: 100px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: bold;
+      animation: fadeIn 1s ease-in-out;
+      margin-bottom: 30px;
+    }
+
+    #qrInput {
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      width: 300px;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      outline: none;
+    }
+
+    .log-entry {
+      font-size: 1rem;
+      margin: 5px 0;
+      display: block;
+      text-align: left;
+      opacity: 0.9;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    .checkmark {
+      color: #00ff00;
+      font-size: 1.2rem;
+      margin-right: 8px;
+    }
+
+    #log {
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 10px;
+      width: 320px;
+      text-align: left;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Εβδομάδες View */
+    #weeksView {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background: url('https://i.postimg.cc/ZnFn6ykY/IMG-4159.jpg') no-repeat center center / cover;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    #todayView {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background: url('https://i.postimg.cc/4NQdC4zX/IMG-4161.jpg') no-repeat center center / cover;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    #selectedMonthTitle, #todayTitle {
+      font-size: 2rem;
+      margin-bottom: 30px;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 10px 20px;
+      border-radius: 10px;
+    }
+
+    .weeks-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 200px);
+      gap: 30px;
+    }
+
+    .weeks-grid button {
+      background: linear-gradient(135deg, #222, #444);
+      border: none;
+      color: white;
+      padding: 30px;
+      border-radius: 15px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+    }
+
+    .weeks-grid button:hover {
+      background: linear-gradient(135deg, #444, #666);
+      transform: translateY(-5px);
+ 
+ .day-btn {
+  background-color: #222;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+  width: 100%;
+}
+.day-btn:hover {
+  background-color: #444;
+}
+    }
+  </style>
+</head>
+
+
+<body>
+
+  <div class="overlay"></div>
+
+  <div class="topbar">
+    <div class="dropdown" id="monthsDropdown">
+      <button class="dropbtn" id="monthsToggle">Μήνες</button>
+      <div class="dropdown-content" id="monthsMenu"></div>
+    </div>
+    <button class="dropbtn" id="todayBtn">Σήμερα</button>
+    <button id="homeButton" class="home-btn" title="Αρχική">🏠</button>
+  </div>
+
+  <div class="content" id="mainContent">
+    <h1>ALWAYS HUNGRY FOR MORE</h1>
+    <input type="text" id="qrInput" placeholder="Σκάναρε εδώ..." autofocus />
+    <div id="log" class="home-content"></div>
+  </div>
+
+  <div class="content" id="weeksView">
+    <h2 id="selectedMonthTitle">Εβδομάδες</h2>
+    <div class="weeks-grid" id="weeksDetails">
+      <!-- Εβδομάδες θα εμφανιστούν εδώ -->
+    </div>
+  </div>
+
+  <div class="content" id="todayView">
+    <h2 id="todayTitle">Σήμερα</h2>
+    <div id="todayLog"></div>
+  </div>
+  <div class="content" id="dayLogView" style="display: none;">
+  <button id="backToWeeks" style="position: absolute; top: 20px; left: 20px; font-size: 24px; background: none; border: none; color: white; cursor: pointer;">←</button>
+  <h2 id="dayLogTitle"></h2>
+  <table style="width: 80%; max-width: 600px; background-color: rgba(0,0,0,0.6); border-collapse: collapse; border-radius: 10px; overflow: hidden;">
+    <thead>
+      <tr>
+        <th style="padding: 10px; border-bottom: 1px solid white;">Όνομα</th>
+        <th style="padding: 10px; border-bottom: 1px solid white;">Ώρα καταγραφής</th>
+      </tr>
+    </thead>
+    <tbody id="dayLogTableBody"></tbody>
+  </table>
+</div>
+
+ 
+  <div class="content" id="dayLogView" style="display: none;">
+  <button id="backToWeeksBtn" style="align-self: flex-start; margin-bottom: 20px; background: none; border: none; font-size: 2rem; cursor: pointer;">←</button>
+  <h2 id="dayLogTitle">Ημερομηνία</h2>
+  <table style="background-color: rgba(0,0,0,0.7); border-radius: 10px; padding: 20px; color: white; width: 100%; max-width: 600px;">
+    <thead>
+      <tr style="border-bottom: 1px solid white;">
+        <th style="text-align: left; padding: 10px;">Όνομα</th>
+        <th style="text-align: left; padding: 10px;">Ώρα Καταγραφής</th>
+      </tr>
+    </thead>
+    <tbody id="dayLogTable">
+      <!-- Δεδομένα σκαναρισμάτων -->
+    </tbody>
+  </table>
+</div>
+
+
+  <script>
+    const logToday = [];
+    const monthsMenu = document.getElementById("monthsMenu");
+    const dropdown = document.getElementById("monthsDropdown");
+    const qrInput = document.getElementById("qrInput");
+    const logContainer = document.getElementById("log");
+    const mainContent = document.getElementById("mainContent");
+    const weeksView = document.getElementById("weeksView");
+    const todayView = document.getElementById("todayView");
+    const selectedMonthTitle = document.getElementById("selectedMonthTitle");
+    const todayLog = document.getElementById("todayLog");
+    const weeksDetails = document.getElementById("weeksDetails");
+
+    const months = ["Ιανουάριος", "Φεβρουάριος", "Μάρτιος", "Απρίλιος", "Μάιος", "Ιούνιος", "Ιούλιος", "Αύγουστος", "Σεπτέμβριος", "Οκτώβριος", "Νοέμβριος", "Δεκέμβριος"];
+
+    function getPeriod(hour) {
+      if (hour >= 9 && hour < 12) return "Πρωί";
+      if (hour >= 12 && hour < 18) return "Μεσημέρι";
+      if (hour >= 18 && hour <= 23) return "Βράδυ";
+      return "Άκυρη Ώρα";
+    }
+
+    function hideAllViews() {
+      mainContent.style.display = "none";
+      weeksView.style.display = "none";
+      todayView.style.display = "none";
+    }
+document.getElementById("backToWeeks").addEventListener("click", () => {
+  hideAllViews();
+  weeksView.style.display = "flex";
+});
+
+    function closeDropdown() {
+      dropdown.classList.remove("open");
+    }
+
+    function renderWeeksWithDates(monthName) {
+      const year = new Date().getFullYear();
+      const monthIndex = months.indexOf(monthName); // 0-based index
+      const dates = [];
+
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, monthIndex, day);
+        dates.push({
+          weekday: date.toLocaleDateString("el-GR", { weekday: 'long' }),
+          dateStr: date.toLocaleDateString("el-GR"),
+          weekNumber: Math.floor((day - 1) / 7) + 1
+        });
+      }
+
+      const groupedWeeks = {};
+      dates.forEach(d => {
+        const week = d.weekNumber;
+        if (!groupedWeeks[week]) groupedWeeks[week] = [];
+        groupedWeeks[week].push(d);
+      });
+
+      weeksDetails.innerHTML = ''; // Clear previous content
+      Object.entries(groupedWeeks).forEach(([week, days]) => {
+        const weekDiv = document.createElement("div");
+        weekDiv.classList.add('week-container');
+
+        // Add "Εβδομάδα x"
+        const weekTitle = document.createElement("h3");
+        weekTitle.textContent = `Εβδομάδα ${week}`;
+        weekDiv.appendChild(weekTitle);
+
+        // Add the days inside the week
+        const daysContainer = document.createElement("div");
+        daysContainer.classList.add('week-days');
+        days.forEach(d => {
+          const dayDiv = document.createElement("div");
+          dayDiv.classList.add('day-box');
+dayDiv.innerHTML = `<button class="day-btn" data-date="${d.dateStr}" data-weekday="${capitalizeFirstLetter(d.weekday)}">${capitalizeFirstLetter(d.weekday)} - ${d.dateStr}</button>`;
+          daysContainer.appendChild(dayDiv);
+        });
+        weekDiv.appendChild(daysContainer);
+
+        weeksDetails.appendChild(weekDiv);
+      });
+    }
+
+    function capitalizeFirstLetter(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    document.getElementById("monthsToggle").addEventListener("click", () => {
+      dropdown.classList.toggle("open");
+    });
+
+    months.forEach(month => {
+      const btn = document.createElement("button");
+      btn.textContent = month;
+      btn.onclick = () => {
+        dropdown.classList.remove("open");
+        setTimeout(() => {
+          hideAllViews();
+          weeksView.style.display = "flex";
+          selectedMonthTitle.textContent = `Εβδομάδες - ${month}`;
+          renderWeeksWithDates(month);
+ weeksDetails.addEventListener("click", function(e) {
+  if (e.target.matches(".day-btn")) {
+    const selectedDate = e.target.dataset.date;
+    const weekday = e.target.dataset.weekday;
+    showDayLog(selectedDate, weekday);
+  }
+});
+        }, 300);
+      };
+      monthsMenu.appendChild(btn);
+    });
+
+    document.getElementById("homeButton").addEventListener("click", () => {
+      hideAllViews();
+      mainContent.style.display = "block";
+      qrInput.focus();
+     // renderLog();
+    });
+
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      hideAllViews();
+      todayView.style.display = "flex";
+      todayLog.innerHTML = "";
+
+      const grouped = { Πρωί: [], Μεσημέρι: [], Βράδυ: [] };
+      logToday.forEach(entry => grouped[entry.period].push(entry));
+
+      ["Πρωί", "Μεσημέρι", "Βράδυ"].forEach(period => {
+        if (grouped[period].length) {
+          const h3 = document.createElement("h3");
+          h3.textContent = period;
+          todayLog.appendChild(h3);
+          grouped[period].forEach(entry => {
+            const div = document.createElement("div");
+            div.className = "log-entry";
+            div.innerHTML = `<span class="checkmark">✅</span> ${entry.name} - ${entry.time}`;
+            todayLog.appendChild(div);
+          });
+        }
+      });
+    });
+
+    document.getElementById("qrInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const name = qrInput.value.trim().toUpperCase();
+        if (!name) return;
+        const now = new Date();
+        const hour = now.getHours();
+        const time = now.toLocaleTimeString("el-GR");
+        const dayPeriod = getPeriod(hour);
+        logToday.push({ name, period: dayPeriod, time });
+        qrInput.value = "";
+        qrInput.focus();
+       // renderLog();
+      }
+    });
+const dayLogView = document.getElementById("dayLogView");
+const dayLogTitle = document.getElementById("dayLogTitle");
+const dayLogTableBody = document.getElementById("dayLogTableBody");
+const backToWeeksBtn = document.getElementById("backToWeeksBtn");
+
+// Προσωρινά δεδομένα (παράδειγμα)
+const mockData = {
+  "4/4/2025": [
+    { name: "https://example.com/user1", time: "10:15:23" },
+    { name: "https://example.com/user2", time: "12:44:10" }
+  ],
+  "5/4/2025": [
+    { name: "https://example.com/user3", time: "09:10:00" }
+  ]
+};
+
+function showDayLog(dateStr, weekday) {
+  hideAllViews();
+  dayLogView.style.display = "flex";
+  dayLogTitle.textContent = `${capitalizeFirstLetter(weekday)} - ${dateStr}`;
+
+  dayLogTableBody.innerHTML = "";
+
+  const logs = mockData[dateStr] || [];
+
+  logs.forEach(log => {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    nameCell.textContent = log.name;
+    nameCell.style.padding = "10px";
+
+    const timeCell = document.createElement("td");
+    timeCell.textContent = log.time;
+    timeCell.style.padding = "10px";
+
+    row.appendChild(nameCell);
+    row.appendChild(timeCell);
+    dayLogTableBody.appendChild(row);
+  });
+}
+
+backToWeeksBtn.addEventListener("click", () => {
+  dayLogView.style.display = "none";
+  weeksView.style.display = "flex";
+  dayLogTitle.textContent="";
+  const tbody = document.getEementById("dayLogTableBody")
+  dayLogTableBody.innerHTML="";
+});
+
+    function renderLog() {
+      logContainer.innerHTML = "";
+      logToday.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "log-entry";
+        div.innerHTML = `<span class="checkmark">✅</span> ${entry.name}`;
+        logContainer.appendChild(div);
+      });
+    }
+
+
+
+    setInterval(() => {
+      const now = new Date();
+      if (now.getHours() === 23 && now.getMinutes() === 0) {
+        logToday.length = 0;
+        renderLog();
+      }
+    }, 60000);
+
+function showDayLog(dateStr, weekday) {
+  hideAllViews();
+  document.getElementById("dayLogView").style.display = "flex";
+
+  const title = `${weekday} - ${dateStr}`;
+  document.getElementById("dayLogTitle").textContent = title;
+
+  const tbody = document.getElementById("dayLogTableBody");
+  tbody.innerHTML = "";
+
+  // Προσωρινά εμφανίζουμε όλο το λινκ
+  logToday.forEach(entry => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td style="padding: 10px; border-bottom: 1px solid #ccc;">${entry.name}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #ccc;">${entry.time}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+  </script>
+
+<style>
+  /* Ορίζουμε το ύψος και τη θέση της κορυφαίας μπάρας */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Μαύρο διάφανο φόντο για την μπάρα */
+    color: white;
+    padding: 10px;
+    z-index: 1000; /* Βεβαιωνόμαστε ότι είναι πάνω από τα άλλα στοιχεία */
+  }
+
+  /* Ρυθμίζουμε το ύψος της κύριας περιεχομένου */
+  .content {
+    margin-top: 70px; /* Αφήνουμε χώρο για τη μπάρα */
+    overflow: auto;
+    padding: 20px;
+  }
+
+  /* Η περιοχή που περιέχει τις εβδομάδες */
+  .weeks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 εβδομάδες δίπλα-δίπλα */
+    gap: 20px; /* Κενό ανάμεσα στις εβδομάδες */
+    margin-top: 20px;
+    overflow-y: auto; /* Αν το περιεχόμενο ξεπερνά την οθόνη, να μπορεί να γίνει κύλιση */
+    max-height: 80vh; /* Όριο ύψους για το περιεχόμενο */
+  }
+
+  /* Οι εβδομάδες με το μαύρο κουτάκι */
+  .week-container {
+    background-color: rgba(0, 0, 0, 0.7); /* Μαύρο φόντο */
+    padding: 15px;
+    border-radius: 8px;
+    color: white; /* Λευκά γράμματα */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .week-container h3 {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+  }
+
+  /* Οι μέρες για κάθε εβδομάδα */
+  .week-days-container {
+    background-color: rgba(0, 0, 0, 0.8); /* Μαύρο διάφανο φόντο για τις ημέρες */
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column; /* Κατακόρυφη διάταξη */
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .day-box {
+    background-color: black;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 16px;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+
+  /* Ρυθμίζουμε το μήκος των εβδομάδων και των ημερών */
+  .week-container .week-days-container .day-box {
+    width: auto; /* Το πλάτος του κουτιού να είναι αυτό που χρειάζεται για την ημέρα */
+  }
+
+  /* Περιορίζουμε το ύψος της σελίδας */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Επιτρέπει κύλιση μόνο αν το περιεχόμενο ξεπερνά την οθόνη */
+  body {
+    overflow: hidden;
+  }
+
+  .content {
+    overflow-y: scroll;
+    max-height: calc(100vh - 70px); /* Όριο ύψους για να μην ξεπερνά την οθόνη */
+  }
+</style>
+
+</body>
+
+</html>
