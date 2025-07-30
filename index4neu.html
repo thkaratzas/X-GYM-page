@@ -722,6 +722,20 @@ body {
       flex-direction: column;
     }
   }
+  @keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-home {
+  animation: fadeSlideIn 0.9s ease;
+}
 
     
   </style>
@@ -813,8 +827,18 @@ body {
 
 <script>
 
-  let logToday = JSON.parse(localStorage.getItem("logToday"));
+let todayDate = new Date().toISOString().slice(0, 10);
+let storedLog = JSON.parse(localStorage.getItem("logToday"));
 
+if (storedLog && storedLog.date === todayDate) {
+  logToday = storedLog;
+} else {
+  logToday = {
+    date: todayDate,
+    entries: []
+  };
+  saveLogData(); // Σώσε νέο log για σήμερα
+}
 if (!logToday || !logToday.entries) {
   logToday = {
     date: new Date().toLocaleDateString("el-GR"),
@@ -1003,12 +1027,19 @@ if (e.target.matches(".day-btn")) {
   });
 
   document.getElementById("homeButton").addEventListener("click", () => {
-hideAllViews();
-mainContent.style.display = "block";  // Επιστρέφουμε στο αρχικό μενού
-qrInput.focus();  // Επιστρέφουμε το focus στο πεδίο εισαγωγής
-document.body.style.backgroundImage = "url('https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')";  // Επαναφορά του αρχικού φόντου
-document.body.classList.remove('show-day-background');  // Αφαιρούμε το animation του φόντου
-dayLogView.style.display = "none"; 
+  hideAllViews();
+
+  // Εφαρμόζουμε animation στην αρχική
+  mainContent.classList.remove("animate-home"); // Για να επαναλάβει το animation
+  void mainContent.offsetWidth; // Force reflow
+  mainContent.classList.add("animate-home");
+
+  mainContent.style.display = "block";  // Επιστρέφουμε στο αρχικό μενού
+  qrInput.focus();  // Επιστρέφουμε το focus στο πεδίο εισαγωγής
+
+  document.body.style.backgroundImage = "url('https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')";
+  document.body.classList.remove('show-day-background');
+  dayLogView.style.display = "none";
 });
 
 document.getElementById("todayBtn").addEventListener("click", () => {
@@ -1375,26 +1406,61 @@ const firebaseConfig = {
   const msUntilMidnight = midnight.getTime() - now.getTime();
 
   setTimeout(() => {
+    // Μηδενίζουμε τις εγγραφές
+    logToday.entries = [];
+
+    // Αδειάζουμε και τα counts για το διάγραμμα
     for (let i = 0; i < counts.length; i++) {
       counts[i] = 0;
     }
 
+    // Ενημερώνουμε chart αν υπάρχει
     if (window.dailyChartInstance) {
       window.dailyChartInstance.data.datasets[0].data = counts;
       window.dailyChartInstance.update();
     }
 
-    scheduleMidnightReset(); // Προγραμματίζει την επόμενη μέρα
+    // Ενημέρωση στατιστικού πίνακα
+    updateTotalEntriesBox();
+
+    // Ενημέρωση localStorage
+    saveLogData();
+
+    // Προγραμματισμός για την επόμενη μέρα
+    scheduleMidnightReset();
   }, msUntilMidnight);
 }
 function updateTotalEntriesBox() {
-  const today = new Date().toISOString().slice(0, 10);
-  const todaysEntries = logToday.entries.filter(entry => {
-    const entryDate = new Date(entry.time).toISOString().slice(0, 10);
-    return entryDate === today;
-  });
-  document.getElementById("totalEntriesValue").textContent = todaysEntries.length;
+  document.getElementById("totalEntriesValue").textContent = logToday.entries.length;
 }
+function showPage(pageId) {
+  const allPages = ["mainContent", "weeksView", "todayView", "dailyStatsPage", "dayLogView"];
+  allPages.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (id === pageId) ? "block" : "none";
+  });
+
+  // Επαναφορά scroll στην αρχή κάθε σελίδας
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Κουμπί "Αρχική"
+  const homeBtn = document.getElementById("homeButton");
+  if (homeBtn) homeBtn.addEventListener("click", () => showPage("mainContent"));
+
+  // Κουμπί "Σήμερα"
+  const todayBtn = document.getElementById("todayBtn");
+  if (todayBtn) todayBtn.addEventListener("click", () => showPage("todayView"));
+
+  // Κουμπί "Στατιστικά > Ημερήσια"
+  const statsDailyBtn = document.querySelector('button[data-view="daily"]');
+  if (statsDailyBtn) statsDailyBtn.addEventListener("click", () => showPage("dailyStatsPage"));
+
+  // Κουμπί "Μήνες" => δείχνει τις εβδομάδες (weeksView)
+  const monthsToggle = document.getElementById("monthsToggle");
+  if (monthsToggle) monthsToggle.addEventListener("click", () => showPage("weeksView"));
+});
 </script>
 
 <style>
