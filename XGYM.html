@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="el">
 <head>
@@ -1860,6 +1861,7 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
     updateTotalEntriesBox();
     updateGenderPercentages();
     saveLogData();
+    localStorage.setItem("lastScannedId", id); // 🧠 Αποθήκευση τελευταίου σκαναρισμένου ID
 
     // ➕ Καταγραφή στα mockData για την Ημέρα
     if (!mockData[dateStr]) mockData[dateStr] = [];
@@ -1877,7 +1879,7 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
     }
 
     // 🔁 Ανανεώνουμε πίτα/γράφημα (αν χρειάζεται)
-    renderDailyChart?.();
+    //renderDailyChart?.();
 
     // 🔁 Ανανεώνουμε και το δεύτερο γράφημα αν είναι ορατό
     const activeMonthBtn = document.querySelector('#monthSelector button.active');
@@ -1899,22 +1901,6 @@ const backToWeeksBtn = document.getElementById("backToWeeksBtn");
 // Μόνιμα δεδομένα από localStorage ή ξεκίνημα από κενό
 let mockData = JSON.parse(localStorage.getItem("attendanceData")) || {};
 
-// ✅ Προσθήκη mock εσόδων Ιουνίου (αν δεν υπάρχουν ήδη)
-if (!mockData["5/6/2025"]) {
-  mockData["5/6/2025"] = [
-    { id: "999", name: "Δοκιμή", gender: "male", time: "10:00", type: "income", amount: "30" }
-  ];
-}
-if (!mockData["12/6/2025"]) {
-  mockData["12/6/2025"] = [
-    { id: "888", name: "Τεστ", gender: "female", time: "14:00", type: "income", amount: "45.50" }
-  ];
-}
-if (!mockData["27/6/2025"]) {
-  mockData["27/6/2025"] = [
-    { id: "777", name: "Mock", gender: "male", time: "18:00", type: "income", amount: "60" }
-  ];
-}
 
 backToWeeksBtn.addEventListener("click", () => {
 console.log("Πίσω πατήθηκε!"); 
@@ -2409,7 +2395,7 @@ $(document).ready(function () {
     });
   });
 async function loadDailyIncome() {
-  const clearYearFlag = false; // Θέσε true ΜΟΝΟ όταν θέλεις να διαγράψεις τα πάντα
+  const clearYearFlag = False; // Θέσε true ΜΟΝΟ όταν θέλεις να διαγράψεις τα πάντα
 
   if (clearYearFlag) {
     console.warn("🧨 Καθαρισμός έτους σε εξέλιξη...");
@@ -2439,7 +2425,7 @@ async function loadDailyIncome() {
   }
 
   try {
-    const response = await fetch("https://script.google.com/macros/s/AKfycbx9W56zUkBxMUWtl6cKfpmzgKbICWVqUXkyA9c2-rjLbeoTLvwcxgJZZezk8mNSMgvygw/exec");
+    const response = await fetch("https://script.google.com/macros/s/AKfycbxbgbgBick-83xioIdE9HOospiEQjDnVPHBkF3KQ40dPKiPxRRfJsvOGLL_m7MgD0LX/exec");
 
     if (!response.ok) {
       console.error("❌ Σφάλμα fetch:", response.status, response.statusText);
