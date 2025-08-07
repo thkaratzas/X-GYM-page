@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XDISPLAY</title>
+
+  <!-- Νέα γραμματοσειρά -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+ <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: black;
+    }
+
+    .slideshow-container {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+
+    .slide {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 2s ease-in-out;
+    }
+
+    .slide.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .status-icon {
+      width: 4vw;
+      height: 4vw;
+      vertical-align: middle;
+      margin-left: 1vw;
+    }
+    .slide.portrait {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide.portrait .overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.4); /* διαφάνεια + σκοτείνιασμα */
+  z-index: 0;
+}
+#digitalClock {
+  position: fixed;
+  top: 1.5vh;
+  left: 2vw;
+  font-size: 4vw;
+  font-family: 'Orbitron', sans-serif;
+  color: #00ffff;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.5vh 1vw;
+  border-radius: 12px;
+  z-index: 9999;
+  text-shadow: 0 0 5px #00ffff, 0 0 6px #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.1em;
+
+  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Όταν θέλουμε να το κρύψουμε */
+#digitalClock.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+/* Όταν θέλουμε να το εμφανίσουμε */
+#digitalClock.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.leaderboard-slide {
+  background: radial-gradient(circle, #141e30, #243b55);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-family: 'Arial', sans-serif;
+  padding: 3vh 5vw;
+}
+
+.leaderboard-content {
+  max-width: 90vw;
+  margin: 0 auto;
+  padding: 4vh 2vw;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(255,255,255,0.2);
+  text-align: center;
+}
+
+.leaderboard-content h1 {
+  font-size: 4vw;
+  margin-bottom: 1rem;
+  color: #ffd700;
+}
+
+#leaderboardTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.8vw;
+}
+
+#leaderboardTable th, #leaderboardTable td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#leaderboardTable tr:nth-child(1) td {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+#leaderboardTable tr:nth-child(2) td {
+  color: silver;
+  font-weight: bold;
+}
+
+#leaderboardTable tr:nth-child(3) td {
+  color: #cd7f32;
+  font-weight: bold;
+}
+.leaderboard-slide .leaderboard-content {
+  margin-top: 2vh; /* ή όσο χρειάζεται */
+}
+/* === Popup πλαίσιο === */
+@keyframes popupFadeZoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  35% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+#popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  padding: 4vh 5vw;
+  border-radius: 20px;
+  z-index: 9999;
+  text-align: center;
+  max-width: 90%;
+  transform-origin: center center;
+  box-shadow: 0 0 20px rgba(255,255,255,0.2);
+  opacity: 0;
+  animation: popupFadeZoom 5s ease-in-out forwards;
+}
+/* === Gradient text στο όνομα === */
+.gradient-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 6vw;
+  font-weight: 700;
+  margin-bottom: 1vh;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.gradient-text.active {
+  background-image: linear-gradient(90deg, #ffffff, #00ff88);
+  text-shadow: 0 0 1px #00ff88, 0 0 2px #00ff88, 0 0 5px #00ff88;
+}
+
+.gradient-text.inactive {
+  background-image: linear-gradient(90deg, #ffffff, #ff0040);
+  text-shadow: 0 0 1px #ff0040, 0 0 2px #ff0040, 0 0 5px #ff0040;
+}
+
+/* === Κείμενα popup με neon glow === */
+.popup-line {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 4.5vw;
+  font-weight: 500;
+  margin-bottom: 1.5vh;
+  color: white;
+}
+
+.popup-line.active {
+  color: #96e6a1;
+  text-shadow: 0 0 1px #00ff88, 0 0 4px #00ff88, 0 0 15px #00ff88;
+}
+
+.popup-line.inactive {
+  color: #ff7f7f;
+  text-shadow: 0 0 1px #ff0040, 0 0 4px #ff0040, 0 0 15px #ff0040;
+}
+  </style>
+</head>
+<body>
+  <div id="digitalClock"></div>
+
+  <div class="slideshow-container">
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/NFXhZL3y/IMG-4924-2.jpg')"></div>
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/mZ1GP6Pb/IMG-4925.jpg')"></div>
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjMFMJbN/IMG-4936.jpg')"></div>
+        <div class="slide portrait" style="background-image: url('https://i.postimg.cc/9XrB1x04/IMG-4937.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')"></div>
+        <div class="slide" style="background-image: url('https://i.postimg.cc/631b9KMG/Your-paragraph-text-2.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/02S01bpP/IMG-4933.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/ZnFn6ykY/IMG-4159.jpg')"></div>
+      <div class="slide" style="background-image: url('https://i.postimg.cc/SKZpMBLK/IMG-4926.jpg')"></div>
+
+
+    <!-- ⬇️ Το Leaderboard θα προστεθεί εδώ από την populateLeaderboard() -->
+  </div>
+
+  <script>
+    // Slideshow
+let slides = [];
+let currentSlide = 0;
+let slideTimer;
+
+function showSlide(index) {
+  clearTimeout(slideTimer);
+
+  slides.forEach((slide, i) => {
+    slide.classList.remove('active');
+  });
+
+  slides[index].classList.add('active');
+
+  const isLeaderboard = slides[index].classList.contains("leaderboard-slide");
+  const clock = document.getElementById("digitalClock");
+
+  if (clock) {
+    if (isLeaderboard) {
+      clock.classList.remove("visible");
+      clock.classList.add("hidden");
+    } else {
+      clock.classList.remove("hidden");
+      clock.classList.add("visible");
+    }
+  }
+
+  const duration = isLeaderboard ? 20000 : 8000;
+
+  slideTimer = setTimeout(() => {
+    currentSlide = (currentSlide + 1) % slides.length;
+    showSlide(currentSlide);
+  }, duration);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  checkSubscription();              // Αν θέλεις και το popup
+  resetMonthlyDataIfNeeded();      // ✅ Πρώτα ελέγχεις αν θα γίνει reset
+  populateLeaderboard();           // ✅ Μετά δημιουργείς το leaderboard
+
+  slides = document.querySelectorAll('.slide'); // ✅ Τώρα όλα τα slides έχουν φορτωθεί
+  showSlide(currentSlide);                      // ✅ Τρέχει το slider σωστά
+
+  // 🔁 Ζωντανή ενημέρωση leaderboard κάθε 5 δευτερόλεπτα
+  let lastLeaderboardState = JSON.stringify(getMonthlyCounts());
+
+  setInterval(() => {
+    const currentState = JSON.stringify(getMonthlyCounts());
+    if (currentState !== lastLeaderboardState) {
+      const oldSlide = document.querySelector(".leaderboard-slide");
+      if (oldSlide) oldSlide.remove();
+      populateLeaderboard();
+      slides = document.querySelectorAll('.slide'); // ❗ πρέπει να ανανεώνεται ο πίνακας των slides
+      lastLeaderboardState = currentState;
+      console.log("🔄 Leaderboard updated live!");
+    }
+  }, 5000);
+});
+
+    // Name formatting rules
+    function formatName(name) {
+      if (!name || typeof name !== "string") return name;
+      name = name.trim().toUpperCase();
+
+      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ", "ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ"];
+
+      if (name.endsWith("ΟΣ")) {
+        if (exceptions.includes(name)) {
+          return name.slice(0, -1); // ΣΤΕΛΙΟΣ → ΣΤΕΛΙΟ
+        } else {
+          return name.slice(0, -2) + "Ε"; // ΝΙΚΟΣ → ΝΙΚΕ
+        }
+      }
+
+      if (name.endsWith("ΗΣ")) {
+        return name.slice(0, -1); // ΠΑΝΑΓΗΣ → ΠΑΝΑΓΗ
+      }
+
+      if (name.endsWith("ΑΣ")) {
+        return name.slice(0, -1); // ΘΑΝΑΣΗΣ → ΘΑΝΑΣΗ
+      }
+
+      return name;
+    }
+
+    // Show popup
+function showPopup(name, isActive) {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Καλημέρα" : "Καλησπέρα";
+
+  const fixedName = formatName(name); // Εφαρμόζεις όπως ήδη έχεις
+
+  const popup = document.createElement("div");
+
+popup.innerHTML = `
+  <div style="text-align: center;">
+    <div class="gradient-text ${isActive ? "active" : "inactive"}">
+      ${greeting} ${fixedName}
+    </div>
+    <div class="popup-line ${isActive ? "active" : "inactive"}">
+      Η συνδρομή σου είναι <strong>${isActive ? "ενεργή" : "ανενεργή"}</strong>
+    </div>
+    <div class="popup-line ${isActive ? "active" : "inactive"}">
+      ${isActive ? "Καλή προπόνηση" : "Η ομάδα μας σε περιμένει!"}
+    </div>
+  </div>
+`;
+
+  Object.assign(popup.style, {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    backdropFilter: "blur(4px)",
+    WebkitBackdropFilter: "blur(4px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+    opacity: "0",
+    transition: "opacity 0.5s ease-in-out",
+    fontFamily: "'Orbitron', sans-serif",
+  });
+
+document.body.appendChild(popup);
+
+// ➕ Ενεργοποιεί το animation αφού πρώτα έχει γίνει paint
+requestAnimationFrame(() => {
+  popup.style.animation = "popupFadeZoom 5s ease-in-out forwards";
+});
+
+  setTimeout(() => {
+    popup.style.opacity = "0";
+    setTimeout(() => popup.remove(), 500);
+    localStorage.removeItem("lastScannedId");
+  }, 5000);
+}
+  function getMonthlyCounts() {
+  const raw = localStorage.getItem("attendanceData"); // ✅ ΠΡΟΣΟΧΗ εδώ
+  if (!raw) return {};
+
+  const data = JSON.parse(raw);
+  const now = new Date();
+  const thisMonth = now.getMonth() + 1;
+  const thisYear = now.getFullYear();
+
+  const counts = {}; // { id: { name: "...", count: n } }
+
+  for (const dateStr in data) {
+    const [day, month, year] = dateStr.split("/").map(Number);
+    if (month === thisMonth && year === thisYear) {
+      data[dateStr].forEach(entry => {
+        if (entry.id && entry.name && entry.type !== "income") {
+          if (!counts[entry.id]) {
+            counts[entry.id] = { name: entry.name, count: 0 };
+          }
+          counts[entry.id].count += 1;
+        }
+      });
+    }
+  }
+
+  return counts;
+}
+function resetMonthlyDataIfNeeded() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const lastReset = localStorage.getItem("lastLeaderboardReset");
+  const [lastYear, lastMonth] = lastReset ? lastReset.split("-").map(Number) : [];
+
+  if (lastYear !== currentYear || lastMonth !== currentMonth) {
+    const data = JSON.parse(localStorage.getItem("mockData") || "{}");
+
+    // Κρατάμε μόνο entries του τρέχοντος μήνα
+    const newData = {};
+    for (const date in data) {
+      const [day, month, year] = date.split("/").map(Number);
+      if (month - 1 === currentMonth && year === currentYear) {
+        newData[date] = data[date];
+      }
+    }
+
+    localStorage.setItem("mockData", JSON.stringify(newData));
+    localStorage.setItem("lastLeaderboardReset", `${currentYear}-${currentMonth}`);
+    console.log("🧹 Μηδενίστηκαν τα δεδομένα leaderboard για νέο μήνα.");
+  }
+}
+function populateLeaderboard() {
+  const oldSlide = document.querySelector(".leaderboard-slide");
+  if (oldSlide) oldSlide.remove();
+  const counts = getMonthlyCounts();
+  console.log("📦 Mock data για αυτόν τον μήνα:", counts);
+
+  const sorted = Object.entries(counts)
+    .sort((a, b) => {
+      if (b[1].count !== a[1].count) {
+        return b[1].count - a[1].count;
+      } else {
+        return a[1].name.localeCompare(b[1].name, 'el');
+      }
+    })
+    .slice(0, 10); // Top 10
+
+  const leaderboardSlide = document.createElement("div");
+  leaderboardSlide.classList.add("slide", "portrait", "leaderboard-slide");
+
+  leaderboardSlide.innerHTML = `
+    <div class="leaderboard-content">
+      <h1>🏆 Monthly Leaderboard</h1>
+      <table id="leaderboardTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Όνομα</th>
+            <th>Προπονήσεις</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(([id, info], i) => {
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+            return `
+              <tr>
+                <td style="text-align:center;">${medal}</td>
+                <td>${info.name}</td>
+                <td style="text-align:center;">${info.count}</td>
+              </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.querySelector(".slideshow-container").appendChild(leaderboardSlide);
+}
+    // Subscription check
+    async function checkSubscription() {
+      const scannedId = localStorage.getItem("lastScannedId");
+      if (!scannedId) return;
+
+      try {
+        const response = await fetch(`https://script.google.com/macros/s/AKfycbzfsYZpY_rGX7eFTJ8nEQt-Ft_w9MrH2y-s03y1BQ9jvlG9IWi5TJUtVlgflcCd538zkw/exec?id=${scannedId}`, {
+          cache: "no-store"
+        });
+
+        const data = await response.json();
+        console.log("✅ API Response:", data);
+
+        if (!data.matchFound) {
+          showPopup("Άγνωστος", false);
+        } else {
+          const displayedName = formatName(data.name);
+          showPopup(displayedName, data.active);
+        }
+      } catch (error) {
+        console.error("❌ Σφάλμα κατά το fetch:", error);
+        showPopup("⚠️ Σφάλμα", false);
+      }
+    }
+
+    window.addEventListener("load", checkSubscription);
+    window.addEventListener("storage", (e) => {
+      if (e.key === "lastScannedId") {
+        checkSubscription();
+      }
+    });
+function updateClock() {
+  const now = new Date();
+  let hours = now.getHours();           // ✅ 24ωρο, χωρίς μετατροπή
+  const minutes = now.getMinutes();
+
+  const hoursStr = hours.toString().padStart(2, "0");
+  const minutesStr = minutes.toString().padStart(2, "0");
+
+  const time = `${hoursStr}:${minutesStr}`;  // ✅ Χωρίς AM/PM
+  document.getElementById("digitalClock").textContent = time;
+}
+
+setInterval(updateClock, 10000); // ανανέωση κάθε 10 δευτερόλεπτα
+updateClock(); // αρχική εμφάνιση
+
+
+  </script>
+</body>
+</html>
