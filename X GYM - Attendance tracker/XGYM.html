@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="el">
 <head>
@@ -1860,6 +1861,7 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
     updateTotalEntriesBox();
     updateGenderPercentages();
     saveLogData();
+    localStorage.setItem("lastScannedId", id); // 🧠 Αποθήκευση τελευταίου σκαναρισμένου ID
 
     // ➕ Καταγραφή στα mockData για την Ημέρα
     if (!mockData[dateStr]) mockData[dateStr] = [];
@@ -1877,9 +1879,7 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
     }
 
     // 🔁 Ανανεώνουμε πίτα/γράφημα (αν χρειάζεται)
-    if (typeof renderDailyChart === 'function') {
-  renderDailyChart();
-}
+    //renderDailyChart?.();
 
     // 🔁 Ανανεώνουμε και το δεύτερο γράφημα αν είναι ορατό
     const activeMonthBtn = document.querySelector('#monthSelector button.active');
@@ -1902,6 +1902,21 @@ const backToWeeksBtn = document.getElementById("backToWeeksBtn");
 let mockData = JSON.parse(localStorage.getItem("attendanceData")) || {};
 
 // ✅ Προσθήκη mock εσόδων Ιουνίου (αν δεν υπάρχουν ήδη)
+if (!mockData["5/6/2025"]) {
+  mockData["5/6/2025"] = [
+    { id: "999", name: "Δοκιμή", gender: "male", time: "10:00", type: "income", amount: "30" }
+  ];
+}
+if (!mockData["12/6/2025"]) {
+  mockData["12/6/2025"] = [
+    { id: "888", name: "Τεστ", gender: "female", time: "14:00", type: "income", amount: "45.50" }
+  ];
+}
+if (!mockData["27/6/2025"]) {
+  mockData["27/6/2025"] = [
+    { id: "777", name: "Mock", gender: "male", time: "18:00", type: "income", amount: "60" }
+  ];
+}
 
 backToWeeksBtn.addEventListener("click", () => {
 console.log("Πίσω πατήθηκε!"); 
@@ -2011,32 +2026,28 @@ document.getElementById("clearYearBtn").addEventListener("click", () => {
     // ✅ Ενημέρωση γραφημάτων και συνοπτικών box
     if (typeof drawJulyChart === "function") drawJulyChart();
     if (typeof drawSecondChart === "function") drawSecondChart(new Date().getMonth() + 1);
-const setText = (id, value) => {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-  else console.warn(`⚠️ Λείπει το element #${id} – αγνοήθηκε η ενημέρωση.`);
-};
 
-// ✅ Μηδενισμός συνοπτικών τιμών γραφήματος Ιουλίου
-setText("totalJulyIncome", "0€");
-setText("bestWeekLabel", "-");
-setText("annualIncome", "-");
-setText("totalAnnualClients", "0");
-setText("bestMonthLabel", "-");
-setText("incomeComparison", "");
-setText("maxGrowthMonth", "-");
+    // ✅ Μηδενισμός συνοπτικών τιμών γραφήματος Ιουλίου
+    document.getElementById("totalJulyIncome").textContent = "0€";
+    document.getElementById("bestWeekLabel").textContent = "-";
+    document.getElementById("annualIncome").textContent = "-";
+    document.getElementById("totalAnnualClients").textContent = "0";
+    document.getElementById("bestMonthLabel").textContent = "-";
+    document.getElementById("incomeComparison").textContent = "";
+    document.getElementById("maxGrowthMonth").textContent = "-";
 
-// ✅ Μηδενισμός συνοπτικών τιμών κάτω από δεύτερο γράφημα
-setText("secondChartTotalEntries", "0");
-setText("secondChartUniqueIds", "0");
-setText("secondChartMonthlyAverage", "0");
-setText("secondChartBestMonth", "0");
-setText("secondChartMaleCount", "0");
-setText("secondChartFemaleCount", "0");
-setText("secondChartReturningRate", "0");
-setText("secondChartAvgVisitsPerId", "0");
+    // ✅ Μηδενισμός συνοπτικών τιμών κάτω από δεύτερο γράφημα
+    document.getElementById("secondChartTotalEntries").textContent = "0";
+    document.getElementById("secondChartUniqueIds").textContent = "0";
+    document.getElementById("secondChartMonthlyAverage").textContent = "0";
+    document.getElementById("secondChartBestMonth").textContent = "0";
+    document.getElementById("secondChartMaleCount").textContent = "0";
+    document.getElementById("secondChartFemaleCount").textContent = "0";
+    document.getElementById("secondChartReturningRate").textContent = "0";
+    document.getElementById("secondChartAvgVisitsPerId").textContent = "0";
 
-alert("Όλα τα δεδομένα του έτους έχουν καθαριστεί!");
+    alert("Όλα τα δεδομένα του έτους έχουν καθαριστεί!");
+  }
 });
 const letters = document.querySelectorAll("#neonText span");
 
@@ -2300,58 +2311,6 @@ function updateGenderPercentages() {
 
   document.querySelector("#circle-1 .circle-overlay").setAttribute("stroke-dashoffset", maleOffset);
 document.querySelector("#circle-2 .circle-overlay").setAttribute("stroke-dashoffset", femaleOffset);
-}
-    function renderDailyChart() {
-  const labels = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"];
-  const counts = new Array(labels.length).fill(0);
-
-  const lastScanMap = new Map();
-  (logToday?.entries || []).forEach(entry => {
-    if (!entry?.id || !entry?.time) return;
-    const [h,m] = entry.time.split(":").map(Number);
-    if (Number.isNaN(h)) return;
-
-    // dedup 5 ώρες / ID
-    const t = new Date(); t.setHours(h, m || 0, 0, 0);
-    const prev = lastScanMap.get(entry.id);
-    if (!prev || (t - prev) >= 5 * 60 * 60 * 1000) {
-      lastScanMap.set(entry.id, t);
-      const idx = h - 9;
-      if (idx >= 0 && idx < counts.length) counts[idx]++;
-    }
-  });
-
-  if (window.dailyChartInstance) {
-    window.dailyChartInstance.data.labels = labels;
-    window.dailyChartInstance.data.datasets[0].data = counts;
-    window.dailyChartInstance.update();
-  }
-
-  const max = Math.max(...counts);
-  const i = counts.indexOf(max);
-  const peak = i >= 0 ? labels[i] : "-";
-  const setText = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
-  setText("peakHourValue", peak);
-  setText("totalEntriesValue", (logToday?.entries?.length || 0).toString());
-
-  // ανανέωση ποσοστών φύλου
-  updateGenderPercentages?.();
-}
-
-// Μεσονύχτιο reset χωρίς να ακουμπά άγνωστα "counts"
-function scheduleMidnightReset() {
-  const now = new Date();
-  const midnight = new Date(); midnight.setHours(24,0,0,0);
-  const wait = midnight - now;
-
-  setTimeout(() => {
-    logToday = { date: new Date().toISOString().slice(0,10), entries: [] };
-    saveLogData();
-    updateTotalEntriesBox?.();
-    updateGenderPercentages?.();
-    renderDailyChart?.();
-    scheduleMidnightReset(); // επαναπρογραμματισμός
-  }, wait);
 }
 function showPage(pageId) {
   const allPages = ["mainContent", "weeksView", "todayView", "dailyStatsPage", "dayLogView", "monthlyStatsPage"];
