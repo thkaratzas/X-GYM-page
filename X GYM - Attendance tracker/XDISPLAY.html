@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png">
  <style>
     * {
       margin: 0;
@@ -235,6 +236,425 @@
   color: #ff7f7f;
   text-shadow: 0 0 1px #ff0040, 0 0 4px #ff0040, 0 0 15px #ff0040;
 }
+/* === Fancy POPUP v2 === */
+@keyframes popInBlur {
+  0% { opacity: 0; transform: scale(.7); filter: blur(8px); }
+  60% { opacity: 1; transform: scale(1.05); filter: blur(0); }
+  100% { transform: scale(1); }
+}
+@keyframes neonPulse {
+  0%,100% { text-shadow: 0 0 6px rgba(0,255,170,.8), 0 0 18px rgba(0,255,170,.35); }
+  50% { text-shadow: 0 0 10px rgba(0,255,170,1), 0 0 26px rgba(0,255,170,.6); }
+}
+@keyframes neonPulseRed {
+  0%,100% { text-shadow: 0 0 6px rgba(255,70,100,.9), 0 0 18px rgba(255,70,100,.4); }
+  50% { text-shadow: 0 0 10px rgba(255,70,100,1), 0 0 26px rgba(255,70,100,.7); }
+}
+@keyframes ringSpin {
+  0% { transform: rotate(0deg); opacity:.85; }
+  50% { opacity:1; }
+  100% { transform: rotate(360deg); opacity:.85; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+#popup-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(0,255,200,.08), rgba(0,0,0,.85) 40%);
+  animation: fadeBg .4s ease;
+}
+@keyframes fadeBg { from {opacity:0} to {opacity:1} }
+
+.popup-card {
+  position: relative;
+  width: min(82vw, 900px);
+  padding: 5vh 5vw;
+  border-radius: 22px;
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 60px rgba(0,255,190,.25), inset 0 0 40px rgba(255,255,255,.02);
+  animation: popInBlur .6s cubic-bezier(.17,.97,.37,1);
+  overflow: hidden;
+}
+
+.popup-card::before, .popup-card::after {
+  content:""; position:absolute; inset:-40%;
+  border-radius: 50%;
+  border: 2px solid rgba(0,255,200,.35);
+  filter: blur(2px);
+  animation: ringSpin 12s linear infinite;
+}
+.popup-card::after {
+  border-color: rgba(0,170,255,.28);
+  animation-duration: 18s;
+  mix-blend-mode: screen;
+}
+
+.popup-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(32px, 6vw, 72px);
+  letter-spacing: .02em;
+  margin: 0 0 1.2vh 0;
+  line-height: 1.05;
+  background: linear-gradient(90deg, #fff, #89ffe6, #00ffb0, #ffffff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+.popup-title.active {
+  position: relative;
+  z-index: 2;
+  animation: shimmer 2.5s linear infinite, neonPulse 1.6s ease-in-out infinite;
+}
+.popup-title.inactive {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(90deg, #fff, #ff8ca5, #ff4664, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.5s linear infinite, neonPulseRed 1.6s ease-in-out infinite;
+}
+
+.popup-line {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(18px, 3.3vw, 34px);
+  color: #e9fffb; opacity: 0; transform: translateY(10px);
+  margin: .6vh 0;
+  transition: opacity .5s, transform .5s;
+}
+.popup-line.show { opacity: 1; transform: translateY(0); }
+.popup-line b { font-weight: 700; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:.6rem;
+  padding:.5rem 1rem; border-radius:999px;
+  font-size: clamp(14px, 2.4vw, 22px);
+  margin-top:1vh;
+  backdrop-filter: blur(3px);
+}
+.badge.active { color:#0d1; background: rgba(0,255,150,.12); border:1px solid rgba(0,255,150,.35); }
+.badge.inactive { color:#f66; background: rgba(255,70,100,.12); border:1px solid rgba(255,70,100,.35); }
+
+.close-wipe {
+  position:absolute; inset:-2px; border-radius: inherit;
+  pointer-events:none; opacity:0;
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(255,255,255,.06), transparent 60%);
+  transition: opacity .4s;
+}
+.popup-card:hover .close-wipe { opacity:1; }
+
+/* ===== Loading Popup (glass + neon ring) ===== */
+#popup-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  opacity: 0;
+  animation: loadingFadeIn .35s ease forwards;
+}
+
+.loading-card {
+  position: relative;
+  width: min(80vw, 680px);
+  padding: min(4vh, 40px) min(4vw, 40px);
+  border-radius: 22px;
+  background: rgba(10, 14, 22, .65);
+  box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+  overflow: hidden;
+  transform: translateY(10px) scale(.98);
+  animation: cardLift .5s cubic-bezier(.2,.8,.2,1) .1s forwards;
+}
+
+/* Neon spinning ring border */
+.loading-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 24px;
+  background: conic-gradient(from 0deg, #00f0ff, #74f2ce, #00ffa3, #00f0ff);
+  filter: blur(6px) saturate(1.2);
+  animation: spin 2.4s linear infinite;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  padding: 2px;
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: .55;
+}
+
+/* Inner glass layer */
+.loading-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Title + dots */
+.loading-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(22px, 4.2vw, 40px);
+  color: #eaffff;
+  text-align: center;
+  letter-spacing: .06em;
+  margin: 0 0 .6em;
+  text-shadow: 0 0 6px rgba(0,255,214,.45);
+  animation: glowPulse 1.6s ease-in-out infinite;
+}
+
+/* Sub text */
+.loading-sub {
+  font-size: clamp(14px, 2.2vw, 18px);
+  color: rgba(255,255,255,.8);
+  text-align: center;
+  margin-bottom: 1.2em;
+}
+
+/* Progress bar with shimmer */
+.loading-progress {
+  height: 12px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.loading-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(0,255,214,.2), rgba(0,255,214,.9), rgba(0,255,214,.2));
+  animation: sweep 2.2s ease-in-out infinite, shimmer 1.2s linear infinite;
+}
+
+/* Keyframes */
+@keyframes loadingFadeIn {
+  to { opacity: 1; }
+}
+@keyframes cardLift {
+  to { transform: translateY(0) scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes glowPulse {
+  0%,100% { text-shadow: 0 0 6px rgba(0,255,214,.35); }
+  50% { text-shadow: 0 0 14px rgba(0,255,214,.75); }
+}
+
+@keyframes sweep {
+  0%   { width: 0%; }
+  50%  { width: 78%; }
+  100% { width: 100%; }
+}
+@keyframes shimmer {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+
+/* Out animation */
+#popup-loading.hide {
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+/* Λογότυπο λιονταριού στο popup */
+.holo-logo {
+  width: clamp(60px, 14vw, 110px);
+  height: clamp(60px, 14vw, 110px);
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 1em;
+  border: 3px solid #00ffd5;
+  box-shadow: 0 0 15px rgba(0,255,214,.6), inset 0 0 12px rgba(0,255,214,.4);
+  animation: logoPulse 2.8s ease-in-out infinite, logoRotate 12s linear infinite;
+}
+
+.holo-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;  /* 👈 αντί για cover για πιο “ξε-ζουμαρισμένο” */
+  background-color: #000; /* προαιρετικό για να γεμίζει γύρω γύρω */
+  padding: 6%; /* λίγο “μαξιλάρι” γύρω από το λιοντάρι */
+  box-sizing: border-box;
+}
+
+/* Keyframes για logo */
+@keyframes logoPulse {
+  0%,100% { box-shadow: 0 0 15px rgba(0,255,214,.6), inset 0 0 12px rgba(0,255,214,.4); }
+  50%     { box-shadow: 0 0 25px rgba(0,255,214,.9), inset 0 0 20px rgba(0,255,214,.6); }
+}
+
+@keyframes logoRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* ===== New minimal / glass leaderboard ===== */
+/* Κάρτα/φόντο */
+.lb-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-card {
+  width: min(92vw, 900px);
+  background: rgba(12, 16, 24, 0.58);
+  border-radius: 20px;
+  padding: 2.2rem 2rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Neon gradient frame */
+.lb-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  background: conic-gradient(from 0deg, #00f0ff, #8af5d0, #00ffa3, #00f0ff);
+  filter: blur(6px) saturate(1.1);
+  opacity: .45;
+  animation: lbSpin 12s linear infinite;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  padding: 2px;
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+@keyframes lbSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header */
+.lb-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.lb-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(22px, 4.5vw, 40px);
+  color: #eaffff;
+  letter-spacing: .05em;
+  text-shadow: 0 0 8px rgba(0,255,214,.5);
+}
+
+.lb-subtitle {
+  margin-top: .25rem;
+  font-size: clamp(12px, 2.2vw, 16px);
+  color: rgba(255,255,255,.75);
+}
+
+/* Πίνακας (flex-based) */
+.lb-table {
+  margin-top: 1rem;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 140px;
+  gap: .75rem;
+  align-items: center;
+  padding: .85rem 1rem;
+  border-radius: 14px;
+  color: #e7faff;
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  transform: translateY(6px) scale(.98);
+  opacity: 0;
+}
+
+.lb-row.row-in {
+  animation: rowEnter .45s cubic-bezier(.2,.8,.2,1) var(--delay, 0ms) forwards;
+}
+
+@keyframes rowEnter {
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.lb-row + .lb-row { margin-top: .5rem; }
+
+.lb-head {
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: rgba(255,255,255,0.06);
+  opacity: 1;
+  transform: none;
+}
+
+.lb-col.lb-rank { text-align: center; }
+.lb-col.lb-name { font-size: clamp(14px, 2.6vw, 18px); }
+.lb-col.lb-count { text-align: center; }
+
+/* Εικαστικά στοιχεία */
+.rank-pill {
+  display: inline-block;
+  min-width: 56px;
+  padding: .35rem .65rem;
+  border-radius: 999px;
+  background: rgba(0,255,214,.12);
+  box-shadow: inset 0 0 0 1px rgba(0,255,214,.35);
+  font-weight: 700;
+}
+
+.count-chip {
+  display: inline-block;
+  min-width: 64px;
+  padding: .35rem .65rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  font-weight: 700;
+}
+
+/* Top 3 χρωματισμοί */
+.lb-row.gold .rank-pill {
+  background: rgba(255, 215, 0, .18);
+  box-shadow: inset 0 0 0 1px rgba(255, 215, 0, .55);
+}
+.lb-row.silver .rank-pill {
+  background: rgba(192, 192, 192, .18);
+  box-shadow: inset 0 0 0 1px rgba(192, 192, 192, .5);
+}
+.lb-row.bronze .rank-pill {
+  background: rgba(205, 127, 50, .18);
+  box-shadow: inset 0 0 0 1px rgba(205, 127, 50, .5);
+}
+
+/* ✨ Rank-up animation (όταν κάποιος ανεβαίνει θέση) */
+@keyframes rankUpGlow {
+  0%   { transform: translateY(0); box-shadow: inset 0 0 0 1px rgba(0,255,214,0.25); }
+  20%  { transform: translateY(-8px); box-shadow: 0 0 22px rgba(0,255,214,0.85); }
+  50%  { transform: translateY(-4px); box-shadow: 0 0 12px rgba(0,255,214,0.65); }
+  100% { transform: translateY(0); box-shadow: inset 0 0 0 1px rgba(0,255,214,0.25); }
+}
+
+.lb-row.rank-up {
+  animation: rankUpGlow 0.9s ease-out;
+}
+
+/* Responsive tweaks */
+@media (max-width: 680px) {
+  .lb-row { grid-template-columns: 70px 1fr 100px; }
+  .rank-pill { min-width: auto; }
+  .count-chip { min-width: auto; }
+}
   </style>
 </head>
 <body>
@@ -343,59 +763,72 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Show popup
 function showPopup(name, isActive) {
-  const now = new Date();
-  const hour = now.getHours();
+  // Καλημέρα/Καλησπέρα
+  const hour = new Date().getHours();
   const greeting = hour < 12 ? "Καλημέρα" : "Καλησπέρα";
 
-  const fixedName = formatName(name); // Εφαρμόζεις όπως ήδη έχεις
+  // Μόνο μικρό όνομα (σε περίπτωση που ήρθε full name)
+  const firstOnly = String(name || "").trim().split(/\s+/)[0] || "";
+  const fixedName = formatName(firstOnly);
 
-  const popup = document.createElement("div");
-
-popup.innerHTML = `
-  <div style="text-align: center;">
-    <div class="gradient-text ${isActive ? "active" : "inactive"}">
-      ${greeting} ${fixedName}
-    </div>
-    <div class="popup-line ${isActive ? "active" : "inactive"}">
-      Η συνδρομή σου είναι <strong>${isActive ? "ενεργή" : "ανενεργή"}</strong>
-    </div>
-    <div class="popup-line ${isActive ? "active" : "inactive"}">
-      ${isActive ? "Καλή προπόνηση" : "Η ομάδα μας σε περιμένει!"}
-    </div>
-  </div>
-`;
-
-  Object.assign(popup.style, {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
-    backdropFilter: "blur(4px)",
-    WebkitBackdropFilter: "blur(4px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 9999,
-    opacity: "0",
-    transition: "opacity 0.5s ease-in-out",
-    fontFamily: "'Orbitron', sans-serif",
+  // Overlay
+  const overlay = document.createElement("div");
+  overlay.id = "popup-overlay";
+  overlay.addEventListener("mousemove", (e) => {
+    const r = overlay.getBoundingClientRect();
+    const card = overlay.querySelector(".close-wipe");
+    if (card) {
+      card.style.setProperty("--x", `${e.clientX - r.left}px`);
+      card.style.setProperty("--y", `${e.clientY - r.top}px`);
+    }
   });
 
-document.body.appendChild(popup);
+  // Κάρτα
+  const card = document.createElement("div");
+  card.className = "popup-card";
 
-// ➕ Ενεργοποιεί το animation αφού πρώτα έχει γίνει paint
-requestAnimationFrame(() => {
-  popup.style.animation = "popupFadeZoom 5s ease-in-out forwards";
-});
+  // Περιεχόμενο
+  card.innerHTML = `
+    <div class="close-wipe"></div>
+    <div class="popup-title ${isActive ? "active" : "inactive"}">
+      ${greeting} ${fixedName}
+    </div>
 
+    <div class="popup-line" style="transition-delay:.08s">
+      Η συνδρομή σου είναι <b>${isActive ? "ενεργή" : "ανενεργή"}</b>.
+    </div>
+
+    <div class="popup-line" style="transition-delay:.16s">
+      ${isActive ? "Καλή προπόνηση!" : "Η ομάδα μας σε περιμένει!"}
+    </div>
+
+    <div class="popup-line" style="transition-delay:.24s">
+      <span class="badge ${isActive ? "active" : "inactive"}">
+        ${isActive ? "🟢 Active Member" : "🔴 Inactive Member"}
+      </span>
+    </div>
+  `;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // staggered εμφάνιση γραμμών
+  requestAnimationFrame(() => {
+    overlay.querySelectorAll(".popup-line").forEach((el) => {
+      // δώσε χρόνο στην είσοδο της κάρτας
+      setTimeout(() => el.classList.add("show"), parseFloat(el.style.transitionDelay || "0") * 1000 + 60);
+    });
+  });
+
+  // Αυτόματο κλείσιμο
   setTimeout(() => {
-    popup.style.opacity = "0";
-    setTimeout(() => popup.remove(), 500);
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity .4s ease";
+    setTimeout(() => overlay.remove(), 400);
     localStorage.removeItem("lastScannedId");
-  }, 5000);
+  }, 4800);
 }
+
   function getMonthlyCounts() {
   const raw = localStorage.getItem("attendanceData"); // ✅ ΠΡΟΣΟΧΗ εδώ
   if (!raw) return {};
@@ -448,77 +881,159 @@ function resetMonthlyDataIfNeeded() {
     console.log("🧹 Μηδενίστηκαν τα δεδομένα leaderboard για νέο μήνα.");
   }
 }
+// Βάλε αυτό ΚΑΠΟΥ ΜΙΑ ΦΟΡΑ πάνω από την populateLeaderboard
+let previousRanks = {}; 
+
 function populateLeaderboard() {
   const oldSlide = document.querySelector(".leaderboard-slide");
   if (oldSlide) oldSlide.remove();
+
   const counts = getMonthlyCounts();
   console.log("📦 Mock data για αυτόν τον μήνα:", counts);
 
   const sorted = Object.entries(counts)
     .sort((a, b) => {
-      if (b[1].count !== a[1].count) {
-        return b[1].count - a[1].count;
-      } else {
-        return a[1].name.localeCompare(b[1].name, 'el');
-      }
+      if (b[1].count !== a[1].count) return b[1].count - a[1].count;
+      return a[1].name.localeCompare(b[1].name, "el");
     })
     .slice(0, 10); // Top 10
 
+  // Υπολογίζουμε τις ΝΕΕΣ θέσεις (για σύγκριση με previousRanks)
+  const newRanks = {};
+  sorted.forEach(([id, info], i) => { newRanks[id] = i; });
+
   const leaderboardSlide = document.createElement("div");
-  leaderboardSlide.classList.add("slide", "portrait", "leaderboard-slide");
+  leaderboardSlide.classList.add("slide", "portrait", "leaderboard-slide", "lb-slide");
 
   leaderboardSlide.innerHTML = `
-    <div class="leaderboard-content">
-      <h1>🏆 Monthly Leaderboard</h1>
-      <table id="leaderboardTable">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Όνομα</th>
-            <th>Προπονήσεις</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sorted.map(([id, info], i) => {
-            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
-            return `
-              <tr>
-                <td style="text-align:center;">${medal}</td>
-                <td>${info.name}</td>
-                <td style="text-align:center;">${info.count}</td>
-              </tr>`;
-          }).join("")}
-        </tbody>
-      </table>
+    <div class="lb-card">
+      <div class="lb-header">
+        <div class="lb-title">Monthly Leaderboard</div>
+        <div class="lb-subtitle">Top 10 σε Προπονήσεις</div>
+      </div>
+
+      <div class="lb-table">
+        <div class="lb-row lb-head">
+          <div class="lb-col lb-rank">#</div>
+          <div class="lb-col lb-name">Όνομα</div>
+          <div class="lb-col lb-count">Προπονήσεις</div>
+        </div>
+
+        ${sorted.map(([id, info], i) => {
+          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1);
+          const rowClass = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+
+          // Ανέβηκε θέση; (μικρότερος δείκτης = καλύτερη κατάταξη)
+          const climbed = previousRanks[id] !== undefined && newRanks[id] < previousRanks[id];
+          const animClass = climbed ? "rank-up" : "";
+
+          return `
+            <div class="lb-row ${rowClass} ${animClass}">
+              <div class="lb-col lb-rank">
+                <span class="rank-pill">${medal}</span>
+              </div>
+              <div class="lb-col lb-name">${info.name}</div>
+              <div class="lb-col lb-count">
+                <span class="count-chip">${info.count}</span>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
     </div>
   `;
 
   document.querySelector(".slideshow-container").appendChild(leaderboardSlide);
+
+  // Staggered εμφάνιση σειρών (ωραίο fade/slide)
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".lb-row:not(.lb-head)").forEach((row, idx) => {
+      row.style.setProperty("--delay", `${idx * 60}ms`);
+      row.classList.add("row-in");
+    });
+  });
+
+  // Στο τέλος, ενημερώνουμε το previousRanks για την επόμενη φορά
+  previousRanks = newRanks;
+}
+// === Instant loading overlay ===
+function showLoadingPopup() {
+  let el = document.getElementById("popup-loading");
+  if (el) return el; // μην το ξαναστήνεις
+
+  el = document.createElement("div");
+  el.id = "popup-loading";
+  el.innerHTML = `
+    <div class="loading-card">
+      <div class="loading-inner">
+
+        <!-- 👇 ΚΥΚΛΙΚΟ LOGO ΜΕ ANIMATION -->
+        <div class="holo-logo">
+          <img
+            src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png"  /* βάλε σωστό path */
+            alt="Lion logo"
+            width="200" height="200"
+            decoding="async" loading="eager"
+          />
+        </div>
+
+        <div class="loading-title">
+  Έλεγχος συνδρομής
+</div>
+        <div class="loading-sub">Παρακαλώ περιμένετε</div>
+        <div class="loading-progress">
+          <div class="loading-bar"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
+function hideLoadingPopup() {
+  const el = document.getElementById("popup-loading");
+  if (!el) return;
+  el.classList.add("hide");
+  setTimeout(() => el.remove(), 300);
+}
+
+function hideLoadingPopup() {
+  const el = document.getElementById("popup-loading");
+  if (el) el.remove();
 }
     // Subscription check
-    async function checkSubscription() {
-      const scannedId = localStorage.getItem("lastScannedId");
-      if (!scannedId) return;
+    // Subscription check
+async function checkSubscription() {
+  const scannedId = localStorage.getItem("lastScannedId");
+  if (!scannedId) return;
 
-      try {
-        const response = await fetch(`https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=${scannedId}`, {
-          cache: "no-store"
-        });
+  const loading = showLoadingPopup(); // ⬅️ δείξε αμέσως overlay
 
-        const data = await response.json();
-        console.log("✅ API Response:", data);
+  try {
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
+      { cache: "no-store" }
+    );
 
-        if (!data.matchFound) {
-          showPopup("Άγνωστος", false);
-        } else {
-          const displayedName = formatName(String(data.name || "").trim().split(/\s+/)[0]);
-          showPopup(displayedName, data.active);
-        }
-      } catch (error) {
-        console.error("❌ Σφάλμα κατά το fetch:", error);
-        showPopup("⚠️ Σφάλμα", false);
-      }
+    const data = await response.json();
+    console.log("✅ API Response:", data);
+    hideLoadingPopup(); // ⬅️ έκρυψέ το μόλις ήρθε απάντηση
+
+    if (!data.matchFound) {
+      showPopup("Άγνωστος", false);
+    } else {
+      // μόνο το μικρό όνομα:
+      const firstOnly = String(data.name || "").trim().split(/\s+/)[0] || "";
+      const displayedName = formatName(firstOnly);
+      showPopup(displayedName, !!data.active);
     }
+  } catch (error) {
+    console.error("❌ Σφάλμα κατά το fetch:", error);
+    hideLoadingPopup(); // ⬅️ έκρυψέ το και σε σφάλμα
+    showPopup("⚠️ Σφάλμα", false);
+  }
+}
 
     window.addEventListener("load", checkSubscription);
     window.addEventListener("storage", (e) => {
