@@ -1901,22 +1901,6 @@ const backToWeeksBtn = document.getElementById("backToWeeksBtn");
 // Μόνιμα δεδομένα από localStorage ή ξεκίνημα από κενό
 let mockData = JSON.parse(localStorage.getItem("attendanceData")) || {};
 
-// ✅ Προσθήκη mock εσόδων Ιουνίου (αν δεν υπάρχουν ήδη)
-if (!mockData["5/6/2025"]) {
-  mockData["5/6/2025"] = [
-    { id: "999", name: "Δοκιμή", gender: "male", time: "10:00", type: "income", amount: "30" }
-  ];
-}
-if (!mockData["12/6/2025"]) {
-  mockData["12/6/2025"] = [
-    { id: "888", name: "Τεστ", gender: "female", time: "14:00", type: "income", amount: "45.50" }
-  ];
-}
-if (!mockData["27/6/2025"]) {
-  mockData["27/6/2025"] = [
-    { id: "777", name: "Mock", gender: "male", time: "18:00", type: "income", amount: "60" }
-  ];
-}
 
 backToWeeksBtn.addEventListener("click", () => {
 console.log("Πίσω πατήθηκε!"); 
