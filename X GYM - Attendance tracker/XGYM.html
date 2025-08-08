@@ -2011,28 +2011,32 @@ document.getElementById("clearYearBtn").addEventListener("click", () => {
     // ✅ Ενημέρωση γραφημάτων και συνοπτικών box
     if (typeof drawJulyChart === "function") drawJulyChart();
     if (typeof drawSecondChart === "function") drawSecondChart(new Date().getMonth() + 1);
+const setText = (id, value) => {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+  else console.warn(`⚠️ Λείπει το element #${id} – αγνοήθηκε η ενημέρωση.`);
+};
 
-    // ✅ Μηδενισμός συνοπτικών τιμών γραφήματος Ιουλίου
-    document.getElementById("totalJulyIncome").textContent = "0€";
-    document.getElementById("bestWeekLabel").textContent = "-";
-    document.getElementById("annualIncome").textContent = "-";
-    document.getElementById("totalAnnualClients").textContent = "0";
-    document.getElementById("bestMonthLabel").textContent = "-";
-    document.getElementById("incomeComparison").textContent = "";
-    document.getElementById("maxGrowthMonth").textContent = "-";
+// ✅ Μηδενισμός συνοπτικών τιμών γραφήματος Ιουλίου
+setText("totalJulyIncome", "0€");
+setText("bestWeekLabel", "-");
+setText("annualIncome", "-");
+setText("totalAnnualClients", "0");
+setText("bestMonthLabel", "-");
+setText("incomeComparison", "");
+setText("maxGrowthMonth", "-");
 
-    // ✅ Μηδενισμός συνοπτικών τιμών κάτω από δεύτερο γράφημα
-    document.getElementById("secondChartTotalEntries").textContent = "0";
-    document.getElementById("secondChartUniqueIds").textContent = "0";
-    document.getElementById("secondChartMonthlyAverage").textContent = "0";
-    document.getElementById("secondChartBestMonth").textContent = "0";
-    document.getElementById("secondChartMaleCount").textContent = "0";
-    document.getElementById("secondChartFemaleCount").textContent = "0";
-    document.getElementById("secondChartReturningRate").textContent = "0";
-    document.getElementById("secondChartAvgVisitsPerId").textContent = "0";
+// ✅ Μηδενισμός συνοπτικών τιμών κάτω από δεύτερο γράφημα
+setText("secondChartTotalEntries", "0");
+setText("secondChartUniqueIds", "0");
+setText("secondChartMonthlyAverage", "0");
+setText("secondChartBestMonth", "0");
+setText("secondChartMaleCount", "0");
+setText("secondChartFemaleCount", "0");
+setText("secondChartReturningRate", "0");
+setText("secondChartAvgVisitsPerId", "0");
 
-    alert("Όλα τα δεδομένα του έτους έχουν καθαριστεί!");
-  }
+alert("Όλα τα δεδομένα του έτους έχουν καθαριστεί!");
 });
 const letters = document.querySelectorAll("#neonText span");
 
