@@ -1877,7 +1877,9 @@ document.getElementById("qrInput").addEventListener("keydown", (e) => {
     }
 
     // 🔁 Ανανεώνουμε πίτα/γράφημα (αν χρειάζεται)
-    //renderDailyChart?.();
+    if (typeof renderDailyChart === 'function') {
+  renderDailyChart();
+}
 
     // 🔁 Ανανεώνουμε και το δεύτερο γράφημα αν είναι ορατό
     const activeMonthBtn = document.querySelector('#monthSelector button.active');
@@ -2294,6 +2296,58 @@ function updateGenderPercentages() {
 
   document.querySelector("#circle-1 .circle-overlay").setAttribute("stroke-dashoffset", maleOffset);
 document.querySelector("#circle-2 .circle-overlay").setAttribute("stroke-dashoffset", femaleOffset);
+}
+    function renderDailyChart() {
+  const labels = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00"];
+  const counts = new Array(labels.length).fill(0);
+
+  const lastScanMap = new Map();
+  (logToday?.entries || []).forEach(entry => {
+    if (!entry?.id || !entry?.time) return;
+    const [h,m] = entry.time.split(":").map(Number);
+    if (Number.isNaN(h)) return;
+
+    // dedup 5 ώρες / ID
+    const t = new Date(); t.setHours(h, m || 0, 0, 0);
+    const prev = lastScanMap.get(entry.id);
+    if (!prev || (t - prev) >= 5 * 60 * 60 * 1000) {
+      lastScanMap.set(entry.id, t);
+      const idx = h - 9;
+      if (idx >= 0 && idx < counts.length) counts[idx]++;
+    }
+  });
+
+  if (window.dailyChartInstance) {
+    window.dailyChartInstance.data.labels = labels;
+    window.dailyChartInstance.data.datasets[0].data = counts;
+    window.dailyChartInstance.update();
+  }
+
+  const max = Math.max(...counts);
+  const i = counts.indexOf(max);
+  const peak = i >= 0 ? labels[i] : "-";
+  const setText = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+  setText("peakHourValue", peak);
+  setText("totalEntriesValue", (logToday?.entries?.length || 0).toString());
+
+  // ανανέωση ποσοστών φύλου
+  updateGenderPercentages?.();
+}
+
+// Μεσονύχτιο reset χωρίς να ακουμπά άγνωστα "counts"
+function scheduleMidnightReset() {
+  const now = new Date();
+  const midnight = new Date(); midnight.setHours(24,0,0,0);
+  const wait = midnight - now;
+
+  setTimeout(() => {
+    logToday = { date: new Date().toISOString().slice(0,10), entries: [] };
+    saveLogData();
+    updateTotalEntriesBox?.();
+    updateGenderPercentages?.();
+    renderDailyChart?.();
+    scheduleMidnightReset(); // επαναπρογραμματισμός
+  }, wait);
 }
 function showPage(pageId) {
   const allPages = ["mainContent", "weeksView", "todayView", "dailyStatsPage", "dayLogView", "monthlyStatsPage"];
