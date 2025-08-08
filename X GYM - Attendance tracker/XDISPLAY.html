@@ -320,7 +320,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!name || typeof name !== "string") return name;
       name = name.trim().toUpperCase();
 
-      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ", "ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ"];
+      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ", "ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ","ΘΑΝΟΣ"];
 
       if (name.endsWith("ΟΣ")) {
         if (exceptions.includes(name)) {
@@ -501,7 +501,7 @@ function populateLeaderboard() {
       if (!scannedId) return;
 
       try {
-        const response = await fetch(`https://script.google.com/macros/s/AKfycbzfsYZpY_rGX7eFTJ8nEQt-Ft_w9MrH2y-s03y1BQ9jvlG9IWi5TJUtVlgflcCd538zkw/exec?id=${scannedId}`, {
+        const response = await fetch(`https://script.google.com/macros/s/AKfycbyyUsCYJJI6Rw9n9CUd6ube1yc2VQcTuMIyDiRDKACASylss_ybG8q-CbIclGunKF5jvQ/exec?id=${scannedId}`, {
           cache: "no-store"
         });
 
