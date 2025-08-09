@@ -292,6 +292,48 @@
   animation-duration: 18s;
   mix-blend-mode: screen;
 }
+.popup-card.active {
+  /* πράσινο-κυανό glow (όπως είχες) */
+  border-color: rgba(0,255,200,.28);
+  box-shadow: 0 10px 60px rgba(0,255,190,.25), inset 0 0 40px rgba(255,255,255,.02);
+}
+
+.popup-card.inactive {
+  /* ΚΟΚΚΙΝΟ περίγραμμα + κόκκινο εξωτερικό glow */
+  border-color: rgba(255,70,100,.35);
+  box-shadow: 0 10px 60px rgba(255,70,100,.25), inset 0 0 40px rgba(255,255,255,.02);
+}
+
+/* Animated δαχτύλιοι (οι πριν/μετά) */
+.popup-card.active::before,
+.popup-card.active::after {
+  border-color: rgba(0,255,200,.35);
+}
+.popup-card.active::after {
+  border-color: rgba(0,170,255,.28); /* δεύτερος δακτύλιος πιο κυανός */
+}
+
+/* ⛔ Inactive: ΚΟΚΚΙΝΟΙ και οι δύο δαχτύλιοι */
+.popup-card.inactive::before,
+.popup-card.inactive::after {
+  border-color: rgba(255,70,100,.35);
+}
+
+/* Hover wipe χρώμα ανά state */
+.popup-card.active .close-wipe {
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(0,255,150,.10), transparent 60%);
+}
+.popup-card.inactive .close-wipe {
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(255,70,100,.10), transparent 60%);
+}
+
+/* Προαιρετικά: και το overlay να έχει ελαφρύ tint ανά state */
+#popup-overlay.active {
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(0,255,200,.08), rgba(0,0,0,.85) 40%);
+}
+#popup-overlay.inactive {
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(255,70,100,.08), rgba(0,0,0,.85) 40%);
+}
 
 .popup-title {
   font-family: 'Orbitron', sans-serif;
@@ -346,6 +388,11 @@
   transition: opacity .4s;
 }
 .popup-card:hover .close-wipe { opacity:1; }
+/* Αφαιρεί το glow και κρατά λευκό χρώμα μόνο για τις σειρές κειμένου */
+.popup-line {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
 
 /* ===== Loading Popup (glass + neon ring) ===== */
 #popup-loading {
@@ -772,8 +819,9 @@ function showPopup(name, isActive) {
   const fixedName = formatName(firstOnly);
 
   // Overlay
-  const overlay = document.createElement("div");
-  overlay.id = "popup-overlay";
+const overlay = document.createElement("div");
+overlay.id = "popup-overlay";
+overlay.classList.add(isActive ? "active" : "inactive"); // <-- ΠΡΟΣΘΗΚΗ
   overlay.addEventListener("mousemove", (e) => {
     const r = overlay.getBoundingClientRect();
     const card = overlay.querySelector(".close-wipe");
@@ -784,30 +832,32 @@ function showPopup(name, isActive) {
   });
 
   // Κάρτα
-  const card = document.createElement("div");
-  card.className = "popup-card";
+// Κάρτα
+const card = document.createElement("div");
+card.className = `popup-card ${isActive ? "active" : "inactive"}`; // <-- ΠΡΟΣΘΗΚΗ
 
   // Περιεχόμενο
-  card.innerHTML = `
-    <div class="close-wipe"></div>
-    <div class="popup-title ${isActive ? "active" : "inactive"}">
-      ${greeting} ${fixedName}
-    </div>
+ card.innerHTML = `
+  <div class="close-wipe"></div>
 
-    <div class="popup-line" style="transition-delay:.08s">
-      Η συνδρομή σου είναι <b>${isActive ? "ενεργή" : "ανενεργή"}</b>.
-    </div>
+  <div class="popup-title ${isActive ? "active" : "inactive"}">
+    ${greeting} ${fixedName}
+  </div>
 
-    <div class="popup-line" style="transition-delay:.16s">
-      ${isActive ? "Καλή προπόνηση!" : "Η ομάδα μας σε περιμένει!"}
-    </div>
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.08s">
+    Η συνδρομή σου είναι <b>${isActive ? "ενεργή" : "ανενεργή"}</b>.
+  </div>
 
-    <div class="popup-line" style="transition-delay:.24s">
-      <span class="badge ${isActive ? "active" : "inactive"}">
-        ${isActive ? "🟢 Active Member" : "🔴 Inactive Member"}
-      </span>
-    </div>
-  `;
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.16s">
+    ${isActive ? "Καλή προπόνηση!" : "Η ομάδα μας σε περιμένει!"}
+  </div>
+
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.24s">
+    <span class="badge ${isActive ? "active" : "inactive"}">
+      ${isActive ? "🟢 Active Member" : "🔴 Inactive Member"}
+    </span>
+  </div>
+`;
 
   overlay.appendChild(card);
   document.body.appendChild(overlay);
