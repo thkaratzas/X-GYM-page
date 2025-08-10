@@ -157,66 +157,7 @@
 .leaderboard-slide .leaderboard-content {
   margin-top: 2vh; /* ή όσο χρειάζεται */
 }
-/* === Popup πλαίσιο === */
-@keyframes popupFadeZoom {
-  0% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  20% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-  35% {
-    transform: scale(1);
-  }
-  80% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
 
-#popup {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  padding: 4vh 5vw;
-  border-radius: 20px;
-  z-index: 9999;
-  text-align: center;
-  max-width: 90%;
-  transform-origin: center center;
-  box-shadow: 0 0 20px rgba(255,255,255,0.2);
-  opacity: 0;
-  animation: popupFadeZoom 5s ease-in-out forwards;
-}
-/* === Gradient text στο όνομα === */
-.gradient-text {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 6vw;
-  font-weight: 700;
-  margin-bottom: 1vh;
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-}
-
-.gradient-text.active {
-  background-image: linear-gradient(90deg, #ffffff, #00ff88);
-  text-shadow: 0 0 1px #00ff88, 0 0 2px #00ff88, 0 0 5px #00ff88;
-}
-
-.gradient-text.inactive {
-  background-image: linear-gradient(90deg, #ffffff, #ff0040);
-  text-shadow: 0 0 1px #ff0040, 0 0 2px #ff0040, 0 0 5px #ff0040;
-}
 
 /* === Κείμενα popup με neon glow === */
 .popup-line {
@@ -237,9 +178,9 @@
   text-shadow: 0 0 1px #ff0040, 0 0 4px #ff0040, 0 0 15px #ff0040;
 }
 /* === Fancy POPUP v2 === */
-@keyframes popInBlur {
-  0% { opacity: 0; transform: scale(.7); filter: blur(8px); }
-  60% { opacity: 1; transform: scale(1.05); filter: blur(0); }
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(.7); }
+  60%  { opacity: 1; transform: scale(1.05); }
   100% { transform: scale(1); }
 }
 @keyframes neonPulse {
@@ -262,7 +203,8 @@
 #popup-overlay {
   position: fixed; inset: 0; z-index: 9999;
   display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
+-webkit-backdrop-filter: blur(4px);
   background: radial-gradient(1200px 800px at 50% 50%, rgba(0,255,200,.08), rgba(0,0,0,.85) 40%);
   animation: fadeBg .4s ease;
 }
@@ -276,8 +218,11 @@
   background: rgba(0,0,0,.65);
   border: 1px solid rgba(255,255,255,.08);
   box-shadow: 0 10px 60px rgba(0,255,190,.25), inset 0 0 40px rgba(255,255,255,.02);
-  animation: popInBlur .6s cubic-bezier(.17,.97,.37,1);
+  animation: popIn .6s cubic-bezier(.17,.97,.37,1);
   overflow: hidden;
+  will-change: transform, opacity;
+transform: translateZ(0);
+contain: paint;
 }
 
 .popup-card::before, .popup-card::after {
@@ -286,11 +231,13 @@
   border: 2px solid rgba(0,255,200,.35);
   filter: blur(2px);
   animation: ringSpin 12s linear infinite;
+  animation-delay: .45s;
 }
 .popup-card::after {
   border-color: rgba(0,170,255,.28);
   animation-duration: 18s;
   mix-blend-mode: screen;
+  animation-delay: .55s;
 }
 .popup-card.active {
   /* πράσινο-κυανό glow (όπως είχες) */
@@ -566,15 +513,21 @@
 }
 
 /* Neon gradient frame */
+/* ✨ Διακριτικό animated border effect */
 .lb-card::before {
   content: "";
   position: absolute;
   inset: -2px;
   border-radius: 22px;
-  background: conic-gradient(from 0deg, #00f0ff, #8af5d0, #00ffa3, #00f0ff);
-  filter: blur(6px) saturate(1.1);
-  opacity: .45;
-  animation: lbSpin 12s linear infinite;
+  background: conic-gradient(from 0deg,
+    rgba(0,255,214,0.4),
+    rgba(138,245,208,0.25),
+    rgba(0,255,163,0.4),
+    rgba(0,255,214,0.4)
+  );
+  filter: blur(3px) saturate(1);
+  opacity: 0.25; /* πιο χαμηλή ένταση */
+  animation: lbSpin 16s linear infinite; /* πιο αργό */
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -694,6 +647,12 @@
 
 .lb-row.rank-up {
   animation: rankUpGlow 0.9s ease-out;
+  animation-play-state: paused;              /* ⬅️ παγωμένο by default */
+}
+
+/* ⬅️ τρέχει ΜΟΝΟ όταν η slide είναι ενεργή στο slider */
+.slide.leaderboard-slide.active .lb-row.rank-up {
+  animation-play-state: running;
 }
 
 /* Responsive tweaks */
@@ -701,6 +660,9 @@
   .lb-row { grid-template-columns: 70px 1fr 100px; }
   .rank-pill { min-width: auto; }
   .count-chip { min-width: auto; }
+}
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  #popup-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
   </style>
 </head>
@@ -729,17 +691,19 @@ let currentSlide = 0;
 let slideTimer;
 
 function showSlide(index) {
+  // σταματάμε τυχόν προηγούμενο timeout
   clearTimeout(slideTimer);
 
-  slides.forEach((slide, i) => {
-    slide.classList.remove('active');
-  });
+  // κρύβουμε όλες τις slides
+  slides.forEach((slide) => slide.classList.remove('active'));
 
-  slides[index].classList.add('active');
+  // δείχνουμε την τρέχουσα
+  const slideEl = slides[index];
+  slideEl.classList.add('active');
 
-  const isLeaderboard = slides[index].classList.contains("leaderboard-slide");
+  // αν είναι το leaderboard, κρύψε το ρολόι – αλλιώς δείξ’ το
+  const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
   const clock = document.getElementById("digitalClock");
-
   if (clock) {
     if (isLeaderboard) {
       clock.classList.remove("visible");
@@ -750,12 +714,28 @@ function showSlide(index) {
     }
   }
 
+  // ⬇️ αν είναι leaderboard, “ξανασπρώξε” το rank-up animation ΜΟΝΟ όταν η slide γίνει active
+  if (isLeaderboard && typeof retriggerRankAnims === 'function') {
+    // μικρό delay για να έχουν περαστεί τα DOM styles πριν ξεκινήσει το εφέ
+    setTimeout(() => retriggerRankAnims(slideEl), 80);
+  }
+
+  // διάρκεια παραμονής της slide
   const duration = isLeaderboard ? 20000 : 8000;
 
+  // προχώρα στην επόμενη
   slideTimer = setTimeout(() => {
     currentSlide = (currentSlide + 1) % slides.length;
     showSlide(currentSlide);
   }, duration);
+}
+function retriggerRankAnims(root = document) {
+  root.querySelectorAll('.lb-row.rank-up').forEach(el => {
+    // τρόπος 1: reset inline
+    el.style.animation = 'none';
+    void el.offsetHeight;      // force reflow
+    el.style.animation = '';   // αφήνουμε το CSS να την ξαναβάλει
+  });
 }
 
 window.addEventListener("DOMContentLoaded", () => {
