@@ -10,6 +10,253 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+
+<!-- Firestore -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // Βάλε εδώ το config από το Firebase Console > Project settings > Your apps > Web app
+const firebaseConfig = {
+  apiKey: "AIzaSyBcwXllrv82qw6o7FCwgJL2_qNGheLNit0",
+  authDomain: "xgym-b5623.firebaseapp.com",
+  projectId: "xgym-b5623",
+  storageBucket: "xgym-b5623.appspot.com" ,
+  messagingSenderId: "269441169531",
+  appId: "1:269441169531:web:e1f0fecf96b0fb7cf4cade",
+  measurementId: "G-P526QEKJKW"
+};
+
+
+  // Εκκίνηση Firebase
+  firebase.initializeApp(firebaseConfig);
+
+  // Δημιουργία αντικειμένου Firestore
+  const db = firebase.firestore();
+  let lastSeenTs = 0;
+
+function startScanSignalListener() {
+  db.collection("signals").doc("lastScan")
+    .onSnapshot((doc) => {
+      if (!doc.exists) return;
+      const data = doc.data();
+      // Προστασία: τρέξε μόνο όταν είναι πραγματικά ΝΕΟ
+      const tsMillis = data.ts && data.ts.toMillis ? data.ts.toMillis() : Date.now();
+      if (tsMillis <= lastSeenTs) return;
+      lastSeenTs = tsMillis;
+
+      // Κάλεσε το popup check για αυτό το ID
+      if (data.id) {
+        // Αν θες και το loading overlay:
+        // showLoadingPopup();
+        checkSubscriptionForId(data.id, data.name);
+      }
+    }, (err) => console.error("signals/lastScan listener error:", err));
+}
+
+// Μικρό wrapper για να περάσουμε id (και προαιρετικά όνομα)
+async function checkSubscriptionForId(scannedId) {
+  if (!scannedId) return;
+  const loading = showLoadingPopup();
+  try {
+    const res = await fetch(
+      "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
+      { cache: "no-store" }
+    );
+    const data = await res.json();
+    hideLoadingPopup();
+
+    // ✅ ΠΑΝΤΑ από το Sheet:
+    const sheetName = String(data.name || "").trim();
+
+    // Αν θες ΜΟΝΟ μικρό όνομα από το Sheet:
+    const firstOnly = sheetName.split(/\s+/)[0] || "";
+
+    // 👉 Διάλεξε: α) ακριβώς όπως στο Sheet
+    const displayName = firstOnly;
+
+    // ή β) με τους κανόνες formatName που είχες (vocative κλπ):
+    // const displayName = formatName(firstOnly);
+
+    showPopup(displayName, !!data.active);
+  } catch (e) {
+    console.error(e);
+    hideLoadingPopup();
+    showPopup("Σφάλμα", false);
+  }
+}
+  db.settings({
+    experimentalForceLongPolling: true,
+    useFetchStreams: false
+  });
+function todayEL() {
+    return new Date().toLocaleDateString('el-GR');
+  }
+
+  // Συγκεντρώνει {name -> count} από Firestore docs
+  function aggregateByName(docs) {
+    const map = new Map();
+    for (const d of docs) {
+      const data = d.data();
+      const name = (data.name || '').trim();
+      if (!name) continue;
+      map.set(name, (map.get(name) || 0) + 1);
+    }
+    const rows = Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a,b) => b.count - a.count);
+    return rows.slice(0, 10);
+  }
+
+  // Φτιάχνει το HTML των rows (κρατάμε τις δικές σου κλάσεις)
+  function buildRowsHTML(rows) {
+    if (!rows || !rows.length) return '';
+    const max = Math.max(...rows.map(r => r.count));
+
+    return rows.map((r, i) => {
+      const rank = i + 1;
+      const pct = max > 0 ? Math.round((r.count / max) * 100) : 0;
+
+      const medalClass =
+        rank === 1 ? ' medal gold' :
+        rank === 2 ? ' medal silver' :
+        rank === 3 ? ' medal bronze' : '';
+
+      const rankLineClass = (rank === 2 ? ' rank-2' : (rank === 3 ? ' rank-3' : ''));
+
+      return `
+        <div class="xlb-item${medalClass}${rankLineClass}" data-rank="${rank}" style="--pct:${pct}; --d:${i*70}ms;">
+          <div class="xlb-rank">${rank}</div>
+          <div class="xlb-avatar"><img src="" alt=""></div>
+          <div class="xlb-name"><span class="xlb-name-text">${r.name}</span></div>
+          <div class="xlb-count">${r.count}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // Φτιάχνει ΟΛΟ το leaderboard slide (ίδια δομή με το populateLeaderboard σου)
+  function buildLeaderboardSlideHTML(rowsHTML) {
+    return `
+      <div class="slide leaderboard-slide">
+        <div class="xlb-panel">
+          <div class="xlb-corners" aria-hidden="true">
+            <span class="c tl"></span>
+            <span class="c tr"></span>
+            <span class="c bl"></span>
+            <span class="c br"></span>
+          </div>
+          <div class="xlb-head">
+            <div class="xlb-kicker">MONTHLY • TOP 10</div>
+            <div class="xlb-title">Leaderboard</div>
+            <div class="xlb-underline"></div>
+          </div>
+          <div class="xlb-list">${rowsHTML}</div>
+        </div>
+      </div>`;
+  }
+
+  // Αντικαθιστά την τρέχουσα leaderboard slide με νέα (χωρίς να χαλάει το slider σου)
+ function replaceLeaderboardSlide(rows) {
+  const sc = document.querySelector(".slideshow-container");
+  if (!sc) return;
+
+  // 1) Χτίζουμε το νέο leaderboard DOM με ασφάλεια
+  const rowsHTML = buildRowsHTML(rows);
+  const newHTML  = buildLeaderboardSlideHTML(rowsHTML);
+  const tmp = document.createElement("div");
+  tmp.innerHTML = newHTML.trim();
+  const newSlide = tmp.firstElementChild;         // <div class="slide leaderboard-slide">...</div>
+
+  // 2) Βρίσκουμε την παλιά leaderboard slide (αν υπάρχει)
+  const oldSlide   = sc.querySelector(".leaderboard-slide");
+  const wasActive  = !!oldSlide && oldSlide.classList.contains("active");
+
+  // 3) Αν υπάρχει ΠΑΛΙΑ και είναι μέσα στο ίδιο container, βρες το index της
+  let oldIndex = -1;
+  if (oldSlide && sc.contains(oldSlide)) {
+    const childrenArr = Array.from(sc.children);
+    oldIndex = childrenArr.indexOf(oldSlide);
+  }
+
+  // 4) Εισαγωγή: αν έχουμε έγκυρο index, βάζουμε τη νέα ακριβώς στη θέση της παλιάς.
+  //    Αλλιώς, την απλά την κάνουμε append στο τέλος.
+  if (oldIndex >= 0) {
+    // Προσοχή: δεν περνάμε ποτέ "ξένο" node ως 2ο arg σε insertBefore
+    const refNode = sc.children[oldIndex] || null;
+    if (refNode) {
+      sc.insertBefore(newSlide, refNode);
+      // ΜΟΝΟ τώρα που βάλαμε τη νέα, αφαιρούμε την παλιά με σιγουριά
+      oldSlide.remove();
+    } else {
+      sc.appendChild(newSlide);
+      if (oldSlide) oldSlide.remove();
+    }
+  } else {
+    sc.appendChild(newSlide);
+    if (oldSlide && oldSlide.parentNode === sc) {
+      oldSlide.remove();
+    }
+  }
+
+  // 5) Ανανεώνουμε τη συλλογή slides (αν το slider σου χρησιμοποιεί global "slides")
+  if (typeof slides === "undefined") {
+    window.slides = sc.querySelectorAll(".slide");
+  } else {
+    slides = sc.querySelectorAll(".slide");
+  }
+
+  // 6) Αν η παλιά ήταν ενεργή, κάνε ενεργή τη ΝΕΑ και retrigger animations
+  if (wasActive) {
+    // καθάρισε το active από όλα
+    slides.forEach(s => s.classList.remove("active"));
+    newSlide.classList.add("active");
+
+    // retrigger custom animations σου (αν υπάρχουν)
+    if (typeof retriggerRankAnims === "function") {
+      setTimeout(() => retriggerRankAnims(newSlide), 80);
+    }
+    requestAnimationFrame(() => {
+      newSlide.querySelectorAll(".xlb-item").forEach((row, idx) => {
+        row.style.setProperty("--d", `${idx * 70}ms`);
+        row.classList.add("in");
+      });
+    });
+
+    // (Προαιρετικό) αν έχεις ρολόι που κρύβεται στο leaderboard
+    const clock = document.getElementById("digitalClock");
+    if (clock) {
+      clock.classList.remove("visible");
+      clock.classList.add("hidden");
+    }
+
+    // (Προαιρετικό) φρόντισε ο δείκτης του slider να «δείχνει» στη σωστή active
+    if (typeof currentSlide !== "undefined") {
+      currentSlide = Array.from(slides).indexOf(newSlide);
+    }
+  }
+}
+  // ---- Real-time listener Firestore ----
+  let unsubLeaderboard = null;
+ function startRealtimeLeaderboard() {
+  const todayIso = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  if (unsubLeaderboard) { unsubLeaderboard(); unsubLeaderboard = null; }
+
+  unsubLeaderboard = db.collection('xgym_scans')
+    .where('dateKey', '==', todayIso)
+    .onSnapshot((snap) => {
+      console.log("📥 Firestore snapshot:", snap.size, "docs");
+      console.log("🧾 sample docs:", snap.docs.slice(0,3).map(d => d.data()));
+
+      const rows = aggregateByName(snap.docs);
+      console.log("🏗️ rows (top10):", rows);
+
+      replaceLeaderboardSlide(rows);
+    }, (err) => {
+      console.error('🔥 Firestore listener error:', err);
+    });
+}
+  
+</script>
  <style>
     * {
       margin: 0;
@@ -1088,14 +1335,7 @@ contain: paint;
   <div id="digitalClock"></div>
 
   <div class="slideshow-container">
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/NFXhZL3y/IMG-4924-2.jpg')"></div>
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/mZ1GP6Pb/IMG-4925.jpg')"></div>
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjMFMJbN/IMG-4936.jpg')"></div>
-        <div class="slide portrait" style="background-image: url('https://i.postimg.cc/9XrB1x04/IMG-4937.jpg')"></div>
-    <div class="slide" style="background-image: url('https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')"></div>
-        <div class="slide" style="background-image: url('https://i.postimg.cc/631b9KMG/Your-paragraph-text-2.jpg')"></div>
-    <div class="slide" style="background-image: url('https://i.postimg.cc/02S01bpP/IMG-4933.jpg')"></div>
-      <div class="slide" style="background-image: url('https://i.postimg.cc/SKZpMBLK/IMG-4926.jpg')"></div>
+   
 <div class="slide leaderboard-slide">
   <div class="xlb-safe">
     <div class="xlb-panel">
@@ -1158,84 +1398,19 @@ function retriggerRankAnims(root = document) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  checkSubscription();              // Αν θέλεις και το popup
-  resetMonthlyDataIfNeeded();      // ✅ Πρώτα ελέγχεις αν θα γίνει reset
-  populateLeaderboard();           // ✅ Μετά δημιουργείς το leaderboard
+  // 1) Real-time leaderboard (όπως το έχεις)
+  startRealtimeLeaderboard();
 
-  slides = document.querySelectorAll('.slide'); // ✅ Τώρα όλα τα slides έχουν φορτωθεί
-  showSlide(currentSlide);                      // ✅ Τρέχει το slider σωστά
+  // 2) ΝΕΟ: Άκου το “σήμα” του τελευταίου scan από Firestore
+  // (αυτό θα καλέσει checkSubscriptionForId() όταν γίνει νέο scan)
+  startScanSignalListener();
 
-  // 🔁 Ζωντανή ενημέρωση leaderboard κάθε 5 δευτερόλεπτα
-  let lastLeaderboardState = JSON.stringify(getMonthlyCounts());
+  // 3) Προαιρετικά utility σου
+  resetMonthlyDataIfNeeded?.();
 
-  setInterval(() => {
-  const currentState = JSON.stringify(getMonthlyCounts());
-  if (currentState !== lastLeaderboardState) {
-    const sc = document.querySelector(".slideshow-container");
-    const oldSlide = document.querySelector(".leaderboard-slide");
-    if (!oldSlide) {
-      // αν για κάποιο λόγο δεν υπάρχει, απλά ξαναχτίσε
-      populateLeaderboard();
-      slides = document.querySelectorAll('.slide');
-      lastLeaderboardState = currentState;
-      return;
-    }
-
-    const wasActive = oldSlide.classList.contains("active");
-    const oldIndex = Array.from(slides).indexOf(oldSlide);
-
-    // χτίσε ΝΕΟ leaderboard (θα προστεθεί στο τέλος)
-    populateLeaderboard();
-    const allLB = document.querySelectorAll(".leaderboard-slide");
-    const newSlide = allLB[allLB.length - 1];
-
-    // βάλ’ το στη ΘΕΣΗ του παλιού
-    sc.insertBefore(newSlide, slides[oldIndex] || null);
-    oldSlide.remove();
-
-    // ανανέωσε τη λίστα slides
-    slides = document.querySelectorAll(".slide");
-
-    // αν ήταν ενεργό, διατήρησε την ενεργή κατάσταση και ξανα-σπρώξε τα εφέ
-    if (wasActive) {
-      // διόρθωσε τον δείκτη της τρέχουσας
-      currentSlide = oldIndex;
-
-      // κρύψε το ρολόι (κανόνας σου)
-      const clock = document.getElementById("digitalClock");
-      if (clock) {
-        clock.classList.remove("visible");
-        clock.classList.add("hidden");
-      }
-
-      // κάν’ το active, και ξανα-τρέξε animations
-      slides.forEach(s => s.classList.remove("active"));
-      newSlide.classList.add("active");
-
-      // retrigger rank-up + stagger
-      if (typeof retriggerRankAnims === "function") {
-        setTimeout(() => retriggerRankAnims(newSlide), 80);
-      }
-      requestAnimationFrame(() => {
-        newSlide.querySelectorAll(".xlb-item").forEach((row, idx) => {
-          row.style.setProperty("--d", `${idx * 70}ms`);
-          row.classList.add("in");
-        });
-      });
-
-      // επανεκκίνηση χρονομέτρου της slide με την ειδική διάρκεια
-      clearTimeout(slideTimer);
-      const duration = 20000; // pro διάρκεια για leaderboard
-      slideTimer = setTimeout(() => {
-        currentSlide = (currentSlide + 1) % slides.length;
-        showSlide(currentSlide);
-      }, duration);
-    }
-
-    lastLeaderboardState = currentState;
-    console.log("🔄 Leaderboard updated live!");
-  }
-}, 5000);
+  // 4) Αν έχεις κι άλλα slides (ρολόι, promo κλπ), κράτα τα
+  slides = document.querySelectorAll('.slide');
+  showSlide(currentSlide);
 });
 
     // Name formatting rules
@@ -1691,11 +1866,10 @@ function hideLoadingPopup() {
 }
     // Subscription check
     // Subscription check
-async function checkSubscription() {
-  const scannedId = localStorage.getItem("lastScannedId");
+async function checkSubscriptionForId(scannedId) {
   if (!scannedId) return;
 
-  const loading = showLoadingPopup(); // ⬅️ δείξε αμέσως overlay
+  const loading = showLoadingPopup();
 
   try {
     const response = await fetch(
@@ -1704,30 +1878,21 @@ async function checkSubscription() {
     );
 
     const data = await response.json();
-    console.log("✅ API Response:", data);
-    hideLoadingPopup(); // ⬅️ έκρυψέ το μόλις ήρθε απάντηση
+    hideLoadingPopup();
 
-    if (!data.matchFound) {
-      showPopup("Άγνωστος", false);
-    } else {
-      // μόνο το μικρό όνομα:
-      const firstOnly = String(data.name || "").trim().split(/\s+/)[0] || "";
-      const displayedName = formatName(firstOnly);
-      showPopup(displayedName, !!data.active);
-    }
+    // ΠΑΝΤΑ από Sheet
+    const sheetName = String(data.name || "").trim();
+    const firstOnly = sheetName.split(/\s+/)[0] || "";
+    const displayedName = formatName(firstOnly); // ή βάλε κατευθείαν firstOnly αν δεν θες vocative
+
+    showPopup(displayedName, !!data.active);
   } catch (error) {
     console.error("❌ Σφάλμα κατά το fetch:", error);
-    hideLoadingPopup(); // ⬅️ έκρυψέ το και σε σφάλμα
+    hideLoadingPopup();
     showPopup("⚠️ Σφάλμα", false);
   }
 }
 
-    window.addEventListener("load", checkSubscription);
-    window.addEventListener("storage", (e) => {
-      if (e.key === "lastScannedId") {
-        checkSubscription();
-      }
-    });
 function updateClock() {
   const now = new Date();
   let hours = now.getHours();           // ✅ 24ωρο, χωρίς μετατροπή
