@@ -6,6 +6,8 @@
   <title>XDISPLAY</title>
 
   <!-- Νέα γραμματοσειρά -->
+   <link rel="preconnect" href="https://script.google.com">
+<link rel="dns-prefetch" href="https://script.google.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
@@ -33,26 +35,32 @@ const firebaseConfig = {
 
   // Δημιουργία αντικειμένου Firestore
   const db = firebase.firestore();
-  let lastSeenTs = 0;
+let lastSeenTs = 0;
+let skipFirst = true;
 
 function startScanSignalListener() {
-  db.collection("signals").doc("lastScan")
-    .onSnapshot((doc) => {
-      if (!doc.exists) return;
-      const data = doc.data();
-      // Προστασία: τρέξε μόνο όταν είναι πραγματικά ΝΕΟ
-      const tsMillis = data.ts && data.ts.toMillis ? data.ts.toMillis() : Date.now();
-      if (tsMillis <= lastSeenTs) return;
-      lastSeenTs = tsMillis;
+  return db.collection("signals").doc("lastScan").onSnapshot((doc) => {
+    if (!doc.exists) return;
+    const data = doc.data() || {};
+    const tsMillis = (data.ts && data.ts.toMillis) ? data.ts.toMillis() : Date.now();
 
-      // Κάλεσε το popup check για αυτό το ID
-      if (data.id) {
-        // Αν θες και το loading overlay:
-        // showLoadingPopup();
-        checkSubscriptionForId(data.id, data.name);
-      }
-    }, (err) => console.error("signals/lastScan listener error:", err));
+    // ⛳ αγνόησε το αρχικό snapshot στο page load
+    if (skipFirst) {
+      skipFirst = false;
+      lastSeenTs = tsMillis; // συγχρονισμός για να μη θεωρηθεί “νέο”
+      return;
+    }
+
+    if (tsMillis <= lastSeenTs) return;
+    lastSeenTs = tsMillis;
+
+    const id = (data.id || "").toString().trim();
+    if (!id) return;
+
+    checkSubscriptionForId(id);
+  }, (err) => console.error("signals/lastScan listener error:", err));
 }
+
 
 // Μικρό wrapper για να περάσουμε id (και προαιρετικά όνομα)
 async function checkSubscriptionForId(scannedId) {
@@ -75,8 +83,7 @@ async function checkSubscriptionForId(scannedId) {
     // 👉 Διάλεξε: α) ακριβώς όπως στο Sheet
     const displayName = firstOnly;
 
-    // ή β) με τους κανόνες formatName που είχες (vocative κλπ):
-    // const displayName = formatName(firstOnly);
+
 
     showPopup(displayName, !!data.active);
   } catch (e) {
@@ -92,170 +99,6 @@ async function checkSubscriptionForId(scannedId) {
 function todayEL() {
     return new Date().toLocaleDateString('el-GR');
   }
-
-  // Συγκεντρώνει {name -> count} από Firestore docs
-  function aggregateByName(docs) {
-    const map = new Map();
-    for (const d of docs) {
-      const data = d.data();
-      const name = (data.name || '').trim();
-      if (!name) continue;
-      map.set(name, (map.get(name) || 0) + 1);
-    }
-    const rows = Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a,b) => b.count - a.count);
-    return rows.slice(0, 10);
-  }
-
-  // Φτιάχνει το HTML των rows (κρατάμε τις δικές σου κλάσεις)
-  function buildRowsHTML(rows) {
-    if (!rows || !rows.length) return '';
-    const max = Math.max(...rows.map(r => r.count));
-
-    return rows.map((r, i) => {
-      const rank = i + 1;
-      const pct = max > 0 ? Math.round((r.count / max) * 100) : 0;
-
-      const medalClass =
-        rank === 1 ? ' medal gold' :
-        rank === 2 ? ' medal silver' :
-        rank === 3 ? ' medal bronze' : '';
-
-      const rankLineClass = (rank === 2 ? ' rank-2' : (rank === 3 ? ' rank-3' : ''));
-
-      return `
-        <div class="xlb-item${medalClass}${rankLineClass}" data-rank="${rank}" style="--pct:${pct}; --d:${i*70}ms;">
-          <div class="xlb-rank">${rank}</div>
-          <div class="xlb-avatar"><img src="" alt=""></div>
-          <div class="xlb-name"><span class="xlb-name-text">${r.name}</span></div>
-          <div class="xlb-count">${r.count}</div>
-        </div>`;
-    }).join('');
-  }
-
-  // Φτιάχνει ΟΛΟ το leaderboard slide (ίδια δομή με το populateLeaderboard σου)
-  function buildLeaderboardSlideHTML(rowsHTML) {
-    return `
-      <div class="slide leaderboard-slide">
-        <div class="xlb-panel">
-          <div class="xlb-corners" aria-hidden="true">
-            <span class="c tl"></span>
-            <span class="c tr"></span>
-            <span class="c bl"></span>
-            <span class="c br"></span>
-          </div>
-          <div class="xlb-head">
-            <div class="xlb-kicker">MONTHLY • TOP 10</div>
-            <div class="xlb-title">Leaderboard</div>
-            <div class="xlb-underline"></div>
-          </div>
-          <div class="xlb-list">${rowsHTML}</div>
-        </div>
-      </div>`;
-  }
-
-  // Αντικαθιστά την τρέχουσα leaderboard slide με νέα (χωρίς να χαλάει το slider σου)
- function replaceLeaderboardSlide(rows) {
-  const sc = document.querySelector(".slideshow-container");
-  if (!sc) return;
-
-  // 1) Χτίζουμε το νέο leaderboard DOM με ασφάλεια
-  const rowsHTML = buildRowsHTML(rows);
-  const newHTML  = buildLeaderboardSlideHTML(rowsHTML);
-  const tmp = document.createElement("div");
-  tmp.innerHTML = newHTML.trim();
-  const newSlide = tmp.firstElementChild;         // <div class="slide leaderboard-slide">...</div>
-
-  // 2) Βρίσκουμε την παλιά leaderboard slide (αν υπάρχει)
-  const oldSlide   = sc.querySelector(".leaderboard-slide");
-  const wasActive  = !!oldSlide && oldSlide.classList.contains("active");
-
-  // 3) Αν υπάρχει ΠΑΛΙΑ και είναι μέσα στο ίδιο container, βρες το index της
-  let oldIndex = -1;
-  if (oldSlide && sc.contains(oldSlide)) {
-    const childrenArr = Array.from(sc.children);
-    oldIndex = childrenArr.indexOf(oldSlide);
-  }
-
-  // 4) Εισαγωγή: αν έχουμε έγκυρο index, βάζουμε τη νέα ακριβώς στη θέση της παλιάς.
-  //    Αλλιώς, την απλά την κάνουμε append στο τέλος.
-  if (oldIndex >= 0) {
-    // Προσοχή: δεν περνάμε ποτέ "ξένο" node ως 2ο arg σε insertBefore
-    const refNode = sc.children[oldIndex] || null;
-    if (refNode) {
-      sc.insertBefore(newSlide, refNode);
-      // ΜΟΝΟ τώρα που βάλαμε τη νέα, αφαιρούμε την παλιά με σιγουριά
-      oldSlide.remove();
-    } else {
-      sc.appendChild(newSlide);
-      if (oldSlide) oldSlide.remove();
-    }
-  } else {
-    sc.appendChild(newSlide);
-    if (oldSlide && oldSlide.parentNode === sc) {
-      oldSlide.remove();
-    }
-  }
-
-  // 5) Ανανεώνουμε τη συλλογή slides (αν το slider σου χρησιμοποιεί global "slides")
-  if (typeof slides === "undefined") {
-    window.slides = sc.querySelectorAll(".slide");
-  } else {
-    slides = sc.querySelectorAll(".slide");
-  }
-
-  // 6) Αν η παλιά ήταν ενεργή, κάνε ενεργή τη ΝΕΑ και retrigger animations
-  if (wasActive) {
-    // καθάρισε το active από όλα
-    slides.forEach(s => s.classList.remove("active"));
-    newSlide.classList.add("active");
-
-    // retrigger custom animations σου (αν υπάρχουν)
-    if (typeof retriggerRankAnims === "function") {
-      setTimeout(() => retriggerRankAnims(newSlide), 80);
-    }
-    requestAnimationFrame(() => {
-      newSlide.querySelectorAll(".xlb-item").forEach((row, idx) => {
-        row.style.setProperty("--d", `${idx * 70}ms`);
-        row.classList.add("in");
-      });
-    });
-
-    // (Προαιρετικό) αν έχεις ρολόι που κρύβεται στο leaderboard
-    const clock = document.getElementById("digitalClock");
-    if (clock) {
-      clock.classList.remove("visible");
-      clock.classList.add("hidden");
-    }
-
-    // (Προαιρετικό) φρόντισε ο δείκτης του slider να «δείχνει» στη σωστή active
-    if (typeof currentSlide !== "undefined") {
-      currentSlide = Array.from(slides).indexOf(newSlide);
-    }
-  }
-}
-  // ---- Real-time listener Firestore ----
-  let unsubLeaderboard = null;
- function startRealtimeLeaderboard() {
-  const todayIso = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  if (unsubLeaderboard) { unsubLeaderboard(); unsubLeaderboard = null; }
-
-  unsubLeaderboard = db.collection('xgym_scans')
-    .where('dateKey', '==', todayIso)
-    .onSnapshot((snap) => {
-      console.log("📥 Firestore snapshot:", snap.size, "docs");
-      console.log("🧾 sample docs:", snap.docs.slice(0,3).map(d => d.data()));
-
-      const rows = aggregateByName(snap.docs);
-      console.log("🏗️ rows (top10):", rows);
-
-      replaceLeaderboardSlide(rows);
-    }, (err) => {
-      console.error('🔥 Firestore listener error:', err);
-    });
-}
-  
 </script>
  <style>
     * {
@@ -705,19 +548,26 @@ contain: paint;
 }
 /* full viewport για το container & κάθε slide */
 .slideshow-container,
-.slide { height: 100vh; }
+.slide {
+  height: 100vh;
+  width: 100vw;          /* νέο */
+  margin: 0;
+  padding: 0;
+}
 
 /* σταθερό κάθετο padding για τη leaderboard slide (px για TV/cast) */
 :root { --slide-vpad: 12px; }
 
 /* slide wrapper */
 .xlb-slide{
-    width: 100%;
-  display:flex; align-items:center; justify-content:center;
-  padding: 2vh 0;      /* ήταν 2vh 5vw */
-  height:100vh;             /* <-- νέο */
-  position:relative;
-  overflow:hidden;
+  width: 100vw;          /* νέο */
+  height: 100vh;         /* ήδη υπάρχει, κρατάμε */
+  padding: 0;            /* από 2vh 0 -> 0 για edge‑to‑edge */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
   background: radial-gradient(1200px 800px at 50% 50%, rgba(95,240,255,.08), var(--xlb-bg) 45%);
 }
 
@@ -730,25 +580,23 @@ contain: paint;
 
 /* κεντρικό panel */
 .xlb-panel{
-  width:100%;
-  max-width:none;           /* <-- βεβαιώσου ότι δεν υπάρχει κάποιο limit */
-  box-sizing:border-box;                  
-  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:0;
-  box-shadow:
-    0 10px 40px rgba(0,0,0,.45),
-    inset 0 0 0 1px rgba(255,255,255,.04);
+  width: 100%;
+  height: 100%;          /* νέο: γεμίζει κατακόρυφα */
+  max-width: none;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 0;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  position:relative;
-  overflow:visible;          /* <-- ήταν hidden */
-  display:flex;
-  flex-direction:column;
-  transform: none;     /* βγάλε το scale(1.15) – μεγάλωνε και το ύψος */
-  transform-origin: top center; 
-    margin: 0;                /* βεβαιώσου ότι δεν υπάρχει margin */
-
+  position: relative;
+  overflow: hidden;       /* ξανά σε hidden για να “κάθεται” */
+  display: flex;
+  flex-direction: column; /* header + list */
+  transform: none;        /* να ΜΗν κάνει scale */
+  transform-origin: top center;
+  margin: 0;
 }
 
 /* λεπτό neon frame (πολύ πιο διακριτικό) */
@@ -769,66 +617,61 @@ contain: paint;
   filter: blur(2px);
 }
 
-/* header */
-/* αντικατάσταση του .xlb-head */
 .xlb-head{
-  padding: 1.0rem 0 .6rem 0;  /* ήταν 1.4rem 1.6rem 0.6rem 1.6rem */
-  text-align:center;
-  position:relative;
+  padding: clamp(8px, 1.4vh, 18px) clamp(10px, 2vw, 24px) clamp(6px, 1.0vh, 14px);
 }
-
 .xlb-kicker{
-  font-size: clamp(13px,2vw,29px);
-  letter-spacing:.28em;
-  text-transform:uppercase;
-  color: var(--xlb-muted);
+  font-size: clamp(12px, 1.8vh, 22px);
+  letter-spacing: .28em;
 }
-
 .xlb-title{
   font-family:'Orbitron',sans-serif;
-  font-size: clamp(32px,6vw,75px);
+  font-size: clamp(22px, 6vh, 72px);
   letter-spacing:.04em;
-  color:var(--xlb-ink);
-  text-shadow: 0 0 12px rgba(95,240,255,.35);
-  margin-top:.2rem;
 }
-
-/* λεπτή animated underline */
 .xlb-underline{
-  width:600px; height:4px; margin:.8rem auto 0;
-  background:linear-gradient(90deg, transparent, var(--xlb-accent), transparent);
-  filter: drop-shadow(0 0 6px rgba(95,240,255,.6));
-  animation: xlbUnderline 2.6s ease-in-out infinite;
-  border-radius:999px;
-  opacity:.85;
+  width: min(70vw, 900px);
+  height: clamp(2px, 0.6vh, 6px);
+  margin: clamp(6px, 1.0vh, 12px) auto 0;
 }
 @keyframes xlbUnderline{
   0%,100%{ transform:scaleX(.6); opacity:.7; }
   50%{ transform:scaleX(1); opacity:1; }
 }
 
-/* πίνακας */
-.xlb-list{ padding: 1rem 1.2rem 1.4rem; }
 
+/* STEP 1: default state ΟΡΑΤΟ */
 .xlb-item{
-  --pct: 0;                 /* Θα έρθει από inline style */
-  display:grid;
-  grid-template-columns: 88px 1fr 112px;
-  align-items:center;
-  gap:.9rem;
+  --pct: 0;
+  display: grid;
+  grid-template-columns: 88px 80px 1fr max-content; /* rank | avatar | name | count */
+  align-items: center;
+  column-gap: 24px;
+  row-gap: .9rem;
+
+  height: 100%;               /* γεμίζει το κελί του grid (1/10 του ύψους) */
+  margin: 0;                  /* όχι extra κενά, τα ελέγχει το grid gap */
   padding: .7rem .9rem;
-  margin:.45rem 0;
+
   background: rgba(255,255,255,.03);
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:16px;
-  color:var(--xlb-ink);
-  transform: translateY(8px);
-  opacity:0;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 16px;
+  color: var(--xlb-ink);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
-  position:relative;
-  overflow:hidden;
+
+  position: relative;
+  overflow: hidden;
+
+  /* default ορατό (το κρύβει μόνο το :not(.in)) */
+  transform: translateY(0);
+  opacity: 1;
 }
 
+/* Κρυφό ΜΟΝΟ πριν πάρει .in (stagger) – το έχουμε ήδη από το προηγούμενο βήμα */
+.xlb-item:not(.in){
+  transform: translateY(8px);
+  opacity: 0;
+}
 /* row in */
 .xlb-item.in{
   animation: xlbRowIn .45s cubic-bezier(.2,.8,.2,1) var(--d, 0ms) forwards;
@@ -875,13 +718,15 @@ contain: paint;
 }
 /* rank badge – κύκλος με λεπτό gradient ring */
 .xlb-rank{
-  width:80px; height:80px; border-radius:50%;
+  width: clamp(44px, 7vh, 96px);
+  height: clamp(44px, 7vh, 96px);
+  border-radius:50%;
   display:grid; place-items:center;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), rgba(255,255,255,.02));
   border:1px solid rgba(255,255,255,.08);
   position:relative;
   font-weight:800;
-  font-size:40px;
+  font-size: clamp(18px, 3.2vh, 40px);
   letter-spacing:.02em;
 }
 .xlb-rank::before{
@@ -898,24 +743,21 @@ contain: paint;
   padding:2px; opacity:.35; filter: blur(1px);
 }
 
-.xlb-name{
-  font-size: clamp(70px, 6vw, 90px);
-  letter-spacing:.02em;
-}
 .xlb-count{
   display: inline-flex;
   align-items: center;
-   justify-content: center;
-  padding: .35rem .9rem;    /* λίγο παραπάνω χώρο αριστερά-δεξιά */
-  min-width: 72px;          /* για μονο/διψήφιο φαίνεται «γεμάτο» */
-  white-space: nowrap;  
+  justify-content: center;
   justify-self:end;
+
   font-weight:800;
-  font-size: clamp(20px,3.6vw,35px);
+  font-size: clamp(14px, 2.6vh, 32px);
+  padding: clamp(6px, 1vh, 12px) clamp(10px, 1.4vw, 18px);
+  min-width: clamp(56px, 8vh, 120px);
+  white-space: nowrap;
+
   color: var(--xlb-ink);
-  background: rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-  padding:.55rem 1rem;
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16);
   border-radius:18px;
 }
 
@@ -932,7 +774,19 @@ contain: paint;
   60%  { transform: translateY(-3px); box-shadow: 0 0 14px rgba(95,240,255,.48); }
   100% { transform: translateY(0); box-shadow: inset 0 0 0 1px rgba(95,240,255,.18); }
 }
-.xlb-item.rank-up{ animation: xlbRankUp .9s ease-out; animation-play-state: paused; }
+/* rank‑up: παγωμένο by default + delay από CSS var */
+.xlb-item.rank-up{
+  animation: xlbRankUp .9s ease-out;
+  animation-play-state: paused;          /* δεν παίζει μέχρι να γίνει active το slide */
+  animation-delay: var(--rankDelay, 0s); /* θα του δώσουμε 5s από JS */
+  opacity: 1 !important;                 /* safety να μη κρυφτεί ποτέ */
+  visibility: visible !important;
+}
+
+/* Τρέχει ΜΟΝΟ όταν το slide είναι ενεργό */
+.leaderboard-slide.active .xlb-item.rank-up{
+  animation-play-state: running;
+}
 .slide.leaderboard-slide.active .xlb-item.rank-up{ animation-play-state: running; }
 
 /* responsive tweaks */
@@ -952,19 +806,24 @@ contain: paint;
   column-gap: 24px;                           /* μεγαλύτερο κενό ανάμεσα στις στήλες */
   row-gap: .9rem; }
 
-/* πιο ευδιάκριτα ονόματα */
 .xlb-name{
-  font-size: clamp(25px, 4vw, 45px);
+  font-size: clamp(16px, 3.2vh, 40px);
+  line-height: 1.1;
   font-weight: 700;
   letter-spacing: .03em;
   color: #f5fbff;
   text-shadow: 0 1px 0 rgba(0,0,0,.25);
   display: flex; align-items: center; gap: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* avatar bubble */
 .xlb-avatar{
-  width: 70px; height: 70px; border-radius: 50%;
+  width: clamp(40px, 6.2vh, 80px);
+  height: clamp(40px, 6.2vh, 80px);
+  border-radius: 50%;
   position: relative; overflow: hidden;
   display: grid; place-items: center;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), rgba(255,255,255,.04));
@@ -1017,7 +876,7 @@ contain: paint;
   background: rgba(255,255,255,.08);
   border-color: rgba(255,255,255,.16);
 }
-/* A. Ονόματα top-3 να ταιριάζουν με τα μετάλλια (λίγο πιο φωτεινά + διακριτικό glow) */
+
 .xlb-item.medal.gold   .xlb-name .xlb-name-text { color: #ffd54a; text-shadow: 0 0 10px rgba(255, 213, 74, .25); }
 .xlb-item.medal.silver .xlb-name .xlb-name-text { color: #d0d8e0; text-shadow: 0 0 10px rgba(208, 216, 224, .22); }
 .xlb-item.medal.bronze .xlb-name .xlb-name-text { color: #d19a66; text-shadow: 0 0 10px rgba(209, 154, 102, .22); }
@@ -1067,14 +926,18 @@ contain: paint;
 /* κράτα το λεπτό neon frame, αλλά κάτω από το content */
 .xlb-panel{ position: relative; z-index: 0; }
 .xlb-panel::before{ z-index: 0; }
-.xlb-item::after{ height: 4px; } /* λίγο πιο “γεμάτη” μπάρα */
+.xlb-item::after{
+  height: clamp(2px, 0.7vh, 6px);
+} /* λίγο πιο “γεμάτη” μπάρα */
 /* η λίστα να κάθεται πάνω από οτιδήποτε διακοσμητικό και να μην κολλάει στο header */
 .xlb-list{
-  position: relative;
-  z-index: 2;
-  padding: 1.2rem 0;   /* ήταν 1rem 1.2rem 1.4rem -> τώρα χωρίς αριστερά/δεξιά */
-  flex: 0 0 auto;
-  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);            /* 10 ίσες σειρές */
+  gap: clamp(4px, 0.9vh, 12px);
+  padding: clamp(6px, 1.2vh, 16px) clamp(10px, 2vw, 24px) clamp(8px, 1.6vh, 18px);
+  overflow: hidden;
 }
 /* το πρώτο row να μη “κολλάει” πάνω */
 .xlb-item:first-child{
@@ -1150,6 +1013,7 @@ contain: paint;
   40%{ box-shadow: 0 0 42px rgba(255, 209, 102, .45); }
   100%{ box-shadow: 0 10px 36px rgba(255, 209, 102, .20); }
 }
+
 /* Wrapper για το νούμερο και την κορόνα του πρώτου */
 .crown-wrapper {
   display: flex;
@@ -1335,7 +1199,7 @@ contain: paint;
   <div id="digitalClock"></div>
 
   <div class="slideshow-container">
-   
+
 <div class="slide leaderboard-slide">
   <div class="xlb-safe">
     <div class="xlb-panel">
@@ -1364,6 +1228,14 @@ function showSlide(index) {
   slideEl.classList.add('active');
 
   const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
+  document.querySelectorAll('.leaderboard-slide').forEach(s => {
+  s.style.removeProperty('--rankDelay');
+});
+
+// Αν αυτό το slide είναι leaderboard, δώσε delay 5s
+if (isLeaderboard) {
+  slideEl.style.setProperty('--rankDelay', '5s');
+}
   const clock = document.getElementById("digitalClock");
   if (clock) {
     if (isLeaderboard) {
@@ -1388,6 +1260,7 @@ function showSlide(index) {
     currentSlide = (currentSlide + 1) % slides.length;
     showSlide(currentSlide);
   }, duration);
+
 }
 function retriggerRankAnims(root = document) {
   root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
@@ -1398,19 +1271,14 @@ function retriggerRankAnims(root = document) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // 1) Real-time leaderboard (όπως το έχεις)
-  startRealtimeLeaderboard();
+  populateLeaderboard();      // ώστε να μη φαίνεται άδειο στο load (προαιρετικό)
+  startRealtimeLeaderboard(); // ενημερώνει με κάθε scan
 
-  // 2) ΝΕΟ: Άκου το “σήμα” του τελευταίου scan από Firestore
-  // (αυτό θα καλέσει checkSubscriptionForId() όταν γίνει νέο scan)
-  startScanSignalListener();
-
-  // 3) Προαιρετικά utility σου
+  startScanSignalListener();  // για τα popups
   resetMonthlyDataIfNeeded?.();
 
-  // 4) Αν έχεις κι άλλα slides (ρολόι, promo κλπ), κράτα τα
   slides = document.querySelectorAll('.slide');
-  showSlide(currentSlide);
+  showSlide(0);
 });
 
     // Name formatting rules
@@ -1649,8 +1517,194 @@ function fitLeaderboardToViewport(slideEl){
   panel.style.transform = `scale(${scale})`;
   // κεντράρισμα γίνεται από .xlb-slide (flex center), δεν βάζουμε extra paddings εδώ
 }
-// --- PRO MODE Leaderboard με avatars + delta badges ---
-// --- PRO MODE Leaderboard με avatars + delta badges ---
+
+let unsubLeaderboard = null;
+
+function startRealtimeLeaderboard() {
+  console.log("[LB] attach listener");
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (unsubLeaderboard) { unsubLeaderboard(); unsubLeaderboard = null; }
+
+  unsubLeaderboard = db.collection('xgym_scans')
+    .where('dateKey', '==', todayIso)
+    .onSnapshot((snap) => {
+      console.log("[LB] snapshot size:", snap.size);
+      const map = new Map();
+      snap.docs.forEach(d => {
+        const data = d.data() || {};
+        const name = String(data.name || '').trim();
+        if (!name) return;
+        map.set(name, (map.get(name) || 0) + 1);
+      });
+
+      const rows = Array.from(map.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name, "el"))
+        .slice(0, 10);
+
+      console.log("[LB] rows:", rows);
+      renderLeaderboardFromRows(rows);
+    }, (err) => console.error('[LB] Firestore listener error:', err));
+}
+function renderLeaderboardFromRows(rows){
+  const sc = document.querySelector(".slideshow-container");
+  if (!sc) { console.error("[LB] .slideshow-container ΔΕΝ βρέθηκε!"); return; }
+
+  // Παλιά leaderboard slide + κατάστασή της
+  const oldSlide = sc.querySelector(".leaderboard-slide");
+  const wasActive = !!oldSlide && oldSlide.classList.contains("active");
+  const oldIndex = oldSlide ? Array.from(sc.children).indexOf(oldSlide) : -1;
+
+  // Αν ΔΕΝ υπάρχουν rows, δείξε placeholder στην ίδια θέση
+  if (!rows || !rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "slide leaderboard-slide xlb-slide";
+    empty.innerHTML = `
+      <div class="xlb-panel">
+        <div class="xlb-head">
+          <div class="xlb-kicker">MONTHLY • TOP 10</div>
+          <div class="xlb-title">Leaderboard</div>
+          <div class="xlb-underline"></div>
+        </div>
+        <div class="xlb-list">
+          <div style="padding:24px;opacity:.75;text-align:center;">Δεν υπάρχουν καταγραφές για σήμερα.</div>
+        </div>
+      </div>`;
+    if (oldIndex >= 0) {
+      sc.insertBefore(empty, sc.children[oldIndex]);
+      oldSlide.remove();
+    } else {
+      sc.appendChild(empty);
+    }
+    // ανανέωσε slides & active
+    slides = document.querySelectorAll('.slide');
+    if (wasActive) {
+      slides.forEach(s => s.classList.remove('active'));
+      empty.classList.add('active');
+      currentSlide = oldIndex >= 0 ? oldIndex : Array.from(slides).indexOf(empty);
+    }
+    fitLeaderboardToViewport(empty);
+    return;
+  }
+
+  // --- Χτίσε το νέο "πλούσιο" slide όπως πριν ---
+  const maxCount = Math.max(...rows.map(r => r.count));
+  const newSlide = document.createElement("div");
+  newSlide.className = "slide leaderboard-slide xlb-slide";
+
+  const rowsHTML = rows.map((r, i) => {
+    const rank = i + 1;
+    const medalClass = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+    const isMedal = i < 3;
+    const pct = maxCount ? Math.round((r.count / maxCount) * 100) : 0;
+
+    const idKey = r.name;
+    const prevRanks = JSON.parse(localStorage.getItem("previousRanks") || "{}");
+    const deltaMemory = JSON.parse(localStorage.getItem("deltaMemory") || "{}");
+
+    let delta = 0, deltaClass = "same", deltaText = "–";
+    if (prevRanks[idKey] !== undefined) {
+      delta = prevRanks[idKey] - i;
+      if (delta > 0) { deltaClass = "up"; deltaText = "⇧"+delta; }
+      else if (delta < 0) { deltaClass = "down"; deltaText = "⇩"+Math.abs(delta); }
+    }
+    if (delta === 0 && deltaMemory[idKey]) {
+      const mem = deltaMemory[idKey];
+      deltaClass = mem.dir === "up" ? "up" : mem.dir === "down" ? "down" : "same";
+      deltaText  = mem.dir === "up" ? "⇧"+(mem.step||1)
+                 : mem.dir === "down" ? "⇩"+(mem.step||1) : "–";
+    } else if (delta !== 0) {
+      deltaMemory[idKey] = { dir: delta>0 ? "up":"down", step: Math.abs(delta) };
+    }
+
+    const avatarUrl = getAvatarFor(idKey, r.name);
+    const rankCell  = isMedal
+      ? `<div class="xlb-rank">${MEDAL_HTML[medalClass]}</div>`
+      : `<div class="xlb-rank">${rank}</div>`;
+
+    const countCell = i === 0
+      ? `<div class="xlb-count crown-wrapper">
+           <span class="xlb-crown" aria-hidden="true">${(typeof CROWN_SVG === "string") ? CROWN_SVG : ""}</span>
+           <span class="xlb-count-number">${r.count}</span>
+         </div>`
+      : `<div class="xlb-count">${r.count}</div>`;
+
+    const extraFirst = i === 0 ? "xlb-first" : "";
+    const rankAnimClass = delta > 0 ? "rank-up" : "";
+
+    return `
+      <div class="xlb-item ${extraFirst} ${isMedal ? "medal " + medalClass : ""} ${rankAnimClass}"
+           data-rank="${rank}" style="--pct:${pct}">
+        ${rankCell}
+        <div class="xlb-avatar"><img src="${avatarUrl}" alt="avatar"></div>
+        <div class="xlb-name">
+          <span class="xlb-name-text">${r.name}</span>
+          <span class="xlb-delta ${deltaClass}">${deltaText}</span>
+        </div>
+        ${countCell}
+      </div>`;
+  }).join("");
+
+  newSlide.innerHTML = `
+    <div class="xlb-panel">
+      <div class="xlb-corners" aria-hidden="true">
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+      </div>
+      <div class="xlb-head">
+        <div class="xlb-kicker">MONTHLY • TOP 10 σε προπονήσεις</div>
+        <div class="xlb-title-row">
+          <div class="xlb-logo"><img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo left"></div>
+          <div class="xlb-title">Leaderboard</div>
+          <div class="xlb-logo"><img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo right"></div>
+        </div>
+        <div class="xlb-underline"></div>
+      </div>
+      <div class="xlb-list">${rowsHTML}</div>
+    </div>
+  `;
+
+  // ➜ Βάλε τη νέα slide στην ίδια θέση με την παλιά (αν υπήρχε)
+  if (oldIndex >= 0) {
+    sc.insertBefore(newSlide, sc.children[oldIndex]);
+    oldSlide.remove();
+  } else {
+    sc.appendChild(newSlide);
+  }
+
+  // ➜ Ανανεώσε το NodeList και το active
+  slides = document.querySelectorAll('.slide');
+  if (wasActive) {
+    slides.forEach(s => s.classList.remove('active'));
+    newSlide.classList.add('active');
+    currentSlide = oldIndex >= 0 ? oldIndex : Array.from(slides).indexOf(newSlide);
+  }
+
+  // ➜ ΕΝΕΡΓΟΠΟΙΗΣΗ ROWS (animation + ορατότητα)
+requestAnimationFrame(() => {
+  const items = newSlide.querySelectorAll(".xlb-item");
+  items.forEach((row, idx) => {
+    row.style.setProperty("--d", `${idx * 70}ms`);
+    row.classList.add("in");            // ⬅️ Χωρίς αυτό μένουν “αόρατα”
+  });
+  if (typeof retriggerRankAnims === "function") retriggerRankAnims(newSlide);
+});
+
+  // fit + anims
+  fitLeaderboardToViewport(newSlide);
+  requestAnimationFrame(()=>fitLeaderboardToViewport(newSlide));
+  setTimeout(()=>fitLeaderboardToViewport(newSlide), 300);
+  setTimeout(()=>fitLeaderboardToViewport(newSlide), 800);
+
+  newSlide.querySelectorAll('img').forEach(img=>{
+    if(!img.complete){ img.addEventListener('load', ()=>fitLeaderboardToViewport(newSlide), {once:true}); }
+  });
+
+  // persist ranks για επόμενο render
+  const newRanks = {};
+  rows.forEach((r, i) => { newRanks[r.name] = i; });
+  localStorage.setItem("previousRanks", JSON.stringify(newRanks));
+}
+
 function populateLeaderboard() {
   // 1) Καθάρισε παλιό slide
   const old = document.querySelector(".leaderboard-slide");
@@ -1860,10 +1914,6 @@ function hideLoadingPopup() {
   setTimeout(() => el.remove(), 300);
 }
 
-function hideLoadingPopup() {
-  const el = document.getElementById("popup-loading");
-  if (el) el.remove();
-}
     // Subscription check
     // Subscription check
 async function checkSubscriptionForId(scannedId) {
