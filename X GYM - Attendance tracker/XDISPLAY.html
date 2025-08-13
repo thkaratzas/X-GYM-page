@@ -1320,6 +1320,7 @@ align-self: center;          /* κάθετα στο grid row */
 <body>
   <div id="digitalClock"></div>
 
+  <div class="slideshow-container">
 <div class="slide leaderboard-slide">
   <div class="xlb-safe">
     <div class="xlb-panel">
@@ -1338,49 +1339,41 @@ window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(P
 let slides = [];
 let currentSlide = 0;
 let slideTimer;
-
+// πόσο μένουν τα υπόλοιπα & πόσο ο leaderboard (ms)
+const DURATION_DEFAULT    = 60000;   // 5s
+const DURATION_LEADERBOARD = 1000000; // 15s (ό,τι θες)
 function showSlide(index) {
   clearTimeout(slideTimer);
 
-  slides.forEach((slide) => slide.classList.remove('active'));
+  slides.forEach(s => s.classList.remove('active'));
 
   const slideEl = slides[index];
   slideEl.classList.add('active');
 
   const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
   document.querySelectorAll('.leaderboard-slide').forEach(s => {
-  s.style.removeProperty('--rankDelay');
-});
+    s.style.removeProperty('--rankDelay');
+  });
+  if (isLeaderboard) {
+    slideEl.style.setProperty('--rankDelay', '5s');
+  }
 
-// Αν αυτό το slide είναι leaderboard, δώσε delay 5s
-if (isLeaderboard) {
-  slideEl.style.setProperty('--rankDelay', '5s');
-}
   const clock = document.getElementById("digitalClock");
   if (clock) {
-    if (isLeaderboard) {
-      clock.classList.remove("visible");
-      clock.classList.add("hidden");
-    } else {
-      clock.classList.remove("hidden");
-      clock.classList.add("visible");
-    }
+    clock.classList.toggle("hidden",  isLeaderboard);
+    clock.classList.toggle("visible", !isLeaderboard);
   }
 
-  // ΜΟΝΟ αυτό αλλάξαμε: +5s στο leaderboard
-  const BASE = 35000;      // όσο μένουν τα υπόλοιπα
-  const EXTRA = 5000;     // +5s μόνο για leaderboard
-  const duration = isLeaderboard ? (BASE + EXTRA) : BASE;
+  const duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
 
-  if (isLeaderboard && typeof retriggerRankAnims === 'function') {
-    setTimeout(() => retriggerRankAnims(slideEl), 80);
-  }
+if (isLeaderboard && typeof retriggerRankAnims === 'function') {
+  setTimeout(() => retriggerRankAnims(slideEl), 80);
+}
 
-  slideTimer = setTimeout(() => {
-    currentSlide = (currentSlide + 1) % slides.length;
-    Slide(currentSlide);
-  }, duration);
-
+slideTimer = setTimeout(() => {
+  currentSlide = (currentSlide + 1) % slides.length;
+  showSlide(currentSlide);
+}, duration);
 }
 function retriggerRankAnims(root = document) {
   root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
@@ -1391,14 +1384,20 @@ function retriggerRankAnims(root = document) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  populateLeaderboard();      // ώστε να μη φαίνεται άδειο στο load (προαιρετικό)
-  startRealtimeLeaderboard(); // ενημερώνει με κάθε scan
+  // αρχικό render από τη μνήμη του μήνα
+  const initialRows = getRowsFromMonthlyMemory(8);
+  if (initialRows.length) {
+    renderLeaderboardFromRows(initialRows);
+  } else {
+    populateLeaderboard(); // αν θες να γεμίσει με local mock/attendanceData όπως πριν
+  }
 
-  startScanSignalListener();  // για τα popups
+  startRealtimeLeaderboard();
+  startScanSignalListener();
   resetMonthlyDataIfNeeded?.();
 
   slides = document.querySelectorAll('.slide');
-  Slide(0);
+  showSlide(0);
 });
 
     // Name formatting rules
@@ -1427,8 +1426,8 @@ window.addEventListener("DOMContentLoaded", () => {
       return name;
     }
 
-    //  popup
-function Popup(name, isActive) {
+    // Show popup
+function showPopup(name, isActive) {
   // Καλημέρα/Καλησπέρα
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Καλημέρα" : "Καλησπέρα";
@@ -1560,6 +1559,51 @@ try {
 // --- Avatars (εικόνες ή initials) ---
 const AVATAR_MAP = JSON.parse(localStorage.getItem("avatarMap") || "{}");
 
+function getRowsFromMonthlyMemory(limit = 8) {
+  const store = loadMonthly(); // { name: count }
+  const rows = Object.entries(store)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name, "el"))
+    .slice(0, limit);
+  return rows;
+}
+// === Monthly memory (per browser) ===
+function monthKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2,'0');
+  return `xlb:month:${y}-${m}`;         // π.χ. xlb:month:2025-08
+}
+
+function loadMonthly() {
+  try { return JSON.parse(localStorage.getItem(monthKey()) || "{}"); }
+  catch { return {}; }
+}
+function saveMonthly(obj) {
+  localStorage.setItem(monthKey(), JSON.stringify(obj || {}));
+}
+
+// προαιρετικό όνομα-κλειδί (χρησιμοποιούμε name σαν key)
+function bumpMonthlyCount(name, step = 1) {
+  if (!name) return;
+  const store = loadMonthly();
+  const k = String(name).trim();
+  store[k] = (store[k] || 0) + step;
+  saveMonthly(store);
+}
+
+// === Αποφυγή διπλομετρήσεων την ίδια μέρα ===
+function processedKeyForToday() {
+  const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  return `xlb:processed:${today}`;
+}
+function loadProcessedToday() {
+  try { return new Set(JSON.parse(localStorage.getItem(processedKeyForToday()) || "[]")); }
+  catch { return new Set(); }
+}
+function saveProcessedToday(set) {
+  localStorage.setItem(processedKeyForToday(), JSON.stringify([...set]));
+}
+
 function makeInitialAvatarDataURI(fullName = "") {
   const initials = (fullName || "?")
     .trim()
@@ -1645,25 +1689,32 @@ function startRealtimeLeaderboard() {
   const todayIso = new Date().toISOString().slice(0, 10);
   if (unsubLeaderboard) { unsubLeaderboard(); unsubLeaderboard = null; }
 
+  const seen = loadProcessedToday(); // Set με doc IDs που μετρήθηκαν ήδη σήμερα
+
   unsubLeaderboard = db.collection('xgym_scans')
     .where('dateKey', '==', todayIso)
     .onSnapshot((snap) => {
       console.log("[LB] snapshot size:", snap.size);
-      const map = new Map();
+
+      let bumped = 0;
       snap.docs.forEach(d => {
+        const id = d.id;
+        if (seen.has(id)) return; // ήδη μετρημένο
         const data = d.data() || {};
         const name = String(data.name || '').trim();
         if (!name) return;
-        map.set(name, (map.get(name) || 0) + 1);
+
+        // bump μηνιαία μνήμη
+        bumpMonthlyCount(name, 1);
+        seen.add(id);
+        bumped++;
       });
+      if (bumped > 0) saveProcessedToday(seen);
 
-      const rows = Array.from(map.entries())
-        .map(([name, count]) => ({ name, count }))
-        .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name, "el"))
-        .slice(0, 10);
-
-      console.log("[LB] rows:", rows);
+      // ΤΩΡΑ: render από τη μνήμη του μήνα (όχι από το snapshot)
+      const rows = getRowsFromMonthlyMemory(8);
       renderLeaderboardFromRows(rows);
+
     }, (err) => console.error('[LB] Firestore listener error:', err));
 }
 function renderLeaderboardFromRows(rows){
@@ -1682,7 +1733,7 @@ rows = rows.slice(0, 8); // Κρατά μόνο τους πρώτους 8
     empty.innerHTML = `
       <div class="xlb-panel">
         <div class="xlb-head">
-          <div class="xlb-kicker">MONTHLY • TOP 10</div>
+          <div class="xlb-kicker">ΜΗΝΙΑΙΟ • TOP 10 ΣΕ ΠΡΟΠΟΝΗΣΕΙΣ</div>
           <div class="xlb-title">Leaderboard</div>
           <div class="xlb-underline"></div>
         </div>
@@ -1928,21 +1979,24 @@ slide.innerHTML = `
 
     <div class="xlb-head">
       <div class="xlb-kicker">MONTHLY • TOP 10 σε προπονήσεις</div>
-
-      <!-- ΝΕΟ row: logo – title – logo -->
       <div class="xlb-title-row">
         <div class="xlb-logo">
           <img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo left">
         </div>
-
         <div class="xlb-title">Leaderboard</div>
-
         <div class="xlb-logo">
           <img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo right">
         </div>
       </div>
-
       <div class="xlb-underline"></div>
+    </div>
+
+    <!-- ΝΕΟ: επικεφαλίδα στηλών -->
+    <div class="xlb-table-head">
+      <div class="col-rank">ΚΑΤΑΤΑΞΗ</div>
+      <div class="col-avatar"></div>
+      <div class="col-name"></div>
+      <div class="col-count">ΠΡΟΠΟΝΗΣΕΙΣ</div>
     </div>
 
     <div class="xlb-list">${rowsHTML}</div>
