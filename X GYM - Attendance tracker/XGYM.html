@@ -50,7 +50,7 @@ const firebaseConfig = {
       font-family: 'Segoe UI', sans-serif;
       background-color: black;
       color: white;
-      background-image: url("https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg");
+background-image: url("https://i.postimg.cc/L4BQR5R8/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -1536,7 +1536,38 @@ body {
 }
 </style>
 <script>
+/* === Storage key unification */
+const STORAGE_KEY = "attendanceData";
 
+let mockData;
+try {
+  // Αν υπάρχει ήδη το νέο key, το φορτώνουμε.
+  const current = localStorage.getItem(STORAGE_KEY);
+
+  // Αν όχι, κάνουμε migration από το παλιό key "mockData" (αν υπάρχει).
+  const legacy = localStorage.getItem("mockData");
+
+  if (current) {
+    mockData = JSON.parse(current) || {};
+  } else if (legacy) {
+    mockData = JSON.parse(legacy) || {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockData));
+  } else {
+    mockData = {};
+  }
+} catch (e) {
+  console.warn("storage parse error", e);
+  mockData = {};
+}
+
+// Χρησιμοποίησε ΠΑΝΤΟΥ αυτή τη save συνάρτηση.
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockData));
+  } catch (e) {
+    console.error("saveData failed", e);
+  }
+}
 let todayDate = new Date().toISOString().slice(0, 10);
 let storedLog = JSON.parse(localStorage.getItem("logToday"));
 
@@ -1750,7 +1781,7 @@ if (e.target.matches(".day-btn")) {
   mainContent.style.display = "block";  // Επιστρέφουμε στο αρχικό μενού
   qrInput.focus();  // Επιστρέφουμε το focus στο πεδίο εισαγωγής
 
-  document.body.style.backgroundImage = "url('https://i.postimg.cc/025nj58G/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')";
+  document.body.style.backgroundImage = "url('https://i.postimg.cc/L4BQR5R8/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')";
   document.body.classList.remove('show-day-background');
   dayLogView.style.display = "none";
 });
@@ -1952,9 +1983,6 @@ db.collection("daily_totals").doc(todayKey).set({
   }
 });
 
-function saveData() {
-localStorage.setItem("attendanceData", JSON.stringify(mockData));
-}
 //const dayLogView = document.getElementById("dayLogView");
 const dayLogTitle = document.getElementById("dayLogTitle");
 const dayLogTableBody = document.getElementById("dayLogTableBody");
@@ -1962,7 +1990,7 @@ const backToWeeksBtn = document.getElementById("backToWeeksBtn");
 
 // Προσωρινά δεδομένα (παράδειγμα)
 // Μόνιμα δεδομένα από localStorage ή ξεκίνημα από κενό
-let mockData = JSON.parse(localStorage.getItem("attendanceData")) || {};
+//let mockData = JSON.parse(localStorage.getItem("attendanceData")) || {};
 
 
 backToWeeksBtn.addEventListener("click", () => {
@@ -2442,13 +2470,16 @@ $(document).ready(function () {
       $('.daily-income-table table').toggleClass('threeDMode');
     });
   });
+
+  
 async function loadDailyIncome() {
   const clearYearFlag = false; // Θέσε true ΜΟΝΟ όταν θέλεις να διαγράψεις τα πάντα
 
+  // 🧨 Προαιρετικός καθαρισμός όλου του έτους
   if (clearYearFlag) {
     console.warn("🧨 Καθαρισμός έτους σε εξέλιξη...");
     localStorage.removeItem("attendanceData");
-    localStorage.setItem("lastClearDate", new Date().toISOString()); // ➕ Σημειώνουμε την ημερομηνία καθαρισμού
+    localStorage.setItem("lastClearDate", new Date().toISOString());
     mockData = {};
 
     const tbody = document.getElementById("incomeTableBody");
@@ -2457,24 +2488,17 @@ async function loadDailyIncome() {
     const label = document.querySelector(".toggle-3d");
     if (label) label.textContent = `Ημερήσια έσοδα: 0 €`;
 
-    document.getElementById("totalJulyIncome").textContent = "0€";
-    document.getElementById("secondChartTotalEntries").textContent = "0";
-    document.getElementById("secondChartUniqueIds").textContent = "0";
-    document.getElementById("secondChartMonthlyAverage").textContent = "0";
-    document.getElementById("totalAnnualClients").textContent = "0";
-    document.getElementById("secondChartBestMonth").textContent = "0";
-    document.getElementById("secondChartMaleCount").textContent = "0";
-    document.getElementById("secondChartFemaleCount").textContent = "0";
-    document.getElementById("secondChartReturningRate").textContent = "0";
-    document.getElementById("secondChartAvgVisitsPerId").textContent = "0";
-    
+    // (προαιρετικά) μηδενισμοί λοιπών πεδίων σου εδώ…
 
     return;
   }
 
   try {
-    const response = await fetch("https://script.google.com/macros/s/AKfycbxo6vyBR-gm7n2664HRqpHEF9dh40slslYBlPPpjdKuIvOx_pS_hEgar-mcAh9RAHG-rQ/exec");
-
+    // 🔗 Τράβηγμα δεδομένων από Apps Script
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbxo6vyBR-gm7n2664HRqpHEF9dh40slslYBlPPpjdKuIvOx_pS_hEgar-mcAh9RAHG-rQ/exec",
+      { cache: "no-store" }
+    );
     if (!response.ok) {
       console.error("❌ Σφάλμα fetch:", response.status, response.statusText);
       return;
@@ -2483,96 +2507,103 @@ async function loadDailyIncome() {
     const data = await response.json();
     console.log("✅ Δεδομένα από API:", data);
 
-    if (!Array.isArray(data) || data.length === 0) {
-      console.warn("⚠️ Δεν υπάρχουν δεδομένα για σήμερα.");
-    }
-
     const lastClearStr = localStorage.getItem("lastClearDate");
     const lastClearDate = lastClearStr ? new Date(lastClearStr) : null;
 
     const tbody = document.getElementById("incomeTableBody");
-    if (!tbody) {
-      console.warn("⚠️ Δεν βρέθηκε το tbody με id incomeTableBody");
-      return;
-    }
+    if (tbody) tbody.innerHTML = "";
 
-    tbody.innerHTML = "";
+    // Θα εμφανίσουμε στον πίνακα ΜΟΝΟ τα σημερινά
+    const todayStr = new Date().toLocaleDateString("el-GR");
+    let totalToday = 0;
 
-    let total = 0;
-    const today = new Date();
-    const todayStr = today.toLocaleDateString("el-GR");
+    // Ασφάλεια
+    const rows = Array.isArray(data) ? data : [];
 
-    if (!mockData[todayStr]) {
-      mockData[todayStr] = [];
-    }
+    rows.forEach((entry) => {
+      const name = entry?.name || "";
+      const amount = parseFloat(entry?.amount) || 0;
 
-    data.forEach(entry => {
-      const name = entry.name || "";
-      const amount = parseFloat(entry.amount) || 0;
-      const dateStr = entry.date || entry["ΗΜ/ΝΙΑ ΠΛΗΡΩΜΗΣ"] || "";
-      const entryDate = new Date(dateStr);
+      // Η χρονοσφραγίδα της πληρωμής από το sheet
+      const rawDateStr = entry?.date || entry?.["ΗΜ/ΝΙΑ ΠΛΗΡΩΜΗΣ"] || "";
+      const entryDate = rawDateStr ? new Date(rawDateStr) : new Date();
 
-      // ✅ Αν υπάρχει lastClearDate, αγνόησε ό,τι είναι ΠΡΙΝ από αυτήν
+      // 🔑 Η πραγματική ΗΜ/ΝΙΑ (el-GR) στην οποία θα αποθηκεύσουμε στο mockData
+      const entryDayStr = entryDate.toLocaleDateString("el-GR");
+
+      // Φίλτρο καθαρισμού, αν έχει οριστεί lastClearDate
       if (lastClearDate && entryDate < lastClearDate) {
-        console.log("⏩ Αγνοήθηκε παλιό entry:", name, dateStr);
+        console.log("⏩ Αγνοήθηκε παλιό entry:", name, rawDateStr);
         return;
       }
 
-      const row = document.createElement("tr");
-      row.setAttribute("data-date", dateStr);
+      // 💾 Αποθήκευση στο local storage ανά ΠΡΑΓΜΑΤΙΚΗ ΗΜΕΡΟΜΗΝΙΑ
+      if (!mockData[entryDayStr]) mockData[entryDayStr] = [];
 
-      const nameCell = document.createElement("td");
-      nameCell.textContent = name;
-
-      const amountCell = document.createElement("td");
-      amountCell.textContent = amount;
-
-      row.appendChild(nameCell);
-      row.appendChild(amountCell);
-      tbody.appendChild(row);
-
-      total += amount;
-
-      const alreadyExists = mockData[todayStr].some(e =>
-        e.name === name && e.amount === amount && e.type === "income"
+      const exists = mockData[entryDayStr].some(
+        (e) => e.type === "income" && e.name === name && Number(e.amount) === amount
       );
 
-      if (!alreadyExists) {
-        mockData[todayStr].push({
+      if (!exists) {
+        mockData[entryDayStr].push({
           id: "INCOME",
-          name: name,
-          amount: amount,
-          time: today.toLocaleTimeString("el-GR"),
-          type: "income"
+          name,
+          amount,
+          time: entryDate.toLocaleTimeString("el-GR"),
+          type: "income",
         });
+      }
+
+      // 🖼️ Απόδοση στον πίνακα ΜΟΝΟ αν η πληρωμή είναι για σήμερα
+      if (entryDayStr === todayStr && tbody) {
+        const row = document.createElement("tr");
+        row.setAttribute("data-date", rawDateStr || entryDayStr);
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = name;
+
+        const amountCell = document.createElement("td");
+        amountCell.textContent = amount;
+
+        row.appendChild(nameCell);
+        row.appendChild(amountCell);
+        tbody.appendChild(row);
+
+        totalToday += amount;
       }
     });
 
-    if (typeof saveMockData === "function") {
-      saveMockData();
-    }
+    // 💾 Σώσε ΟΛΟ το ενημερωμένο mockData
+    saveData();
 
+    // 🏷️ Ενημέρωση label «Ημερήσια έσοδα»
     const label = document.querySelector(".toggle-3d");
     if (label) {
-      label.textContent = `Ημερήσια έσοδα: ${total} €`;
-      console.log("💶 Συνολικά έσοδα:", total);
+      label.textContent = `Ημερήσια έσοδα: ${totalToday} €`;
+      console.log("💶 Συνολικά σημερινά έσοδα:", totalToday);
     }
 
-    const activeMonthBtn = document.querySelector('#monthSelector button.active');
+    // 📈 Ανασχεδίαση γραφήματος που βασίζεται σε μήνα
+    const activeMonthBtn = document.querySelector("#monthSelector button.active");
     if (activeMonthBtn) {
-      const selectedMonth = parseInt(activeMonthBtn.getAttribute("data-month"));
-      if (!isNaN(selectedMonth)) {
+      const selectedMonth = parseInt(activeMonthBtn.getAttribute("data-month"), 10);
+      if (!isNaN(selectedMonth) && typeof updateMonthlyChartFromData === "function") {
         updateMonthlyChartFromData(selectedMonth);
       }
     }
-
   } catch (error) {
     console.error("❌ Σφάλμα κατά το fetch:", error);
   }
-  const activeMonthBtn = document.querySelector('#monthSelector button.active');
-const monthToRedraw = activeMonthBtn ? parseInt(activeMonthBtn.dataset.month, 10)
-                                    : (new Date().getMonth() + 1);
-drawSecondChart(monthToRedraw);
+
+  // 📉 Redraw του δεύτερου γραφήματος
+  const activeMonthBtn = document.querySelector("#monthSelector button.active");
+  const monthToRedraw = activeMonthBtn
+    ? parseInt(activeMonthBtn.dataset.month, 10)
+    : new Date().getMonth() + 1;
+
+  if (typeof drawSecondChart === "function") {
+    drawSecondChart(monthToRedraw);
+  }
 }
 
 function waitForTableAndRender(data) {
