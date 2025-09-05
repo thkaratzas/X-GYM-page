@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XDISPLAY</title>
+
+  <!-- Νέα γραμματοσειρά -->
+   <link rel="preconnect" href="https://script.google.com">
+<link rel="dns-prefetch" href="https://script.google.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+
+<!-- Firestore -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // Βάλε εδώ το config από το Firebase Console > Project settings > Your apps > Web app
+const firebaseConfig = {
+  apiKey: "AIzaSyBcwXllrv82qw6o7FCwgJL2_qNGheLNit0",
+  authDomain: "xgym-b5623.firebaseapp.com",
+  projectId: "xgym-b5623",
+  storageBucket: "xgym-b5623.appspot.com" ,
+  messagingSenderId: "269441169531",
+  appId: "1:269441169531:web:e1f0fecf96b0fb7cf4cade",
+  measurementId: "G-P526QEKJKW"
+};
+
+
+  // Εκκίνηση Firebase
+  firebase.initializeApp(firebaseConfig);
+
+  // Δημιουργία αντικειμένου Firestore
+  const db = firebase.firestore();
+let lastSeenTs = 0;
+let skipFirst = true;
+
+function startScanSignalListener() {
+  return db.collection("signals").doc("lastScan").onSnapshot((doc) => {
+    if (!doc.exists) return;
+    const data = doc.data() || {};
+    const tsMillis = (data.ts && data.ts.toMillis) ? data.ts.toMillis() : Date.now();
+
+    // ⛳ αγνόησε το αρχικό snapshot στο page load
+    if (skipFirst) {
+      skipFirst = false;
+      lastSeenTs = tsMillis; // συγχρονισμός για να μη θεωρηθεί “νέο”
+      return;
+    }
+
+    if (tsMillis <= lastSeenTs) return;
+    lastSeenTs = tsMillis;
+
+    const id = (data.id || "").toString().trim();
+    if (!id) return;
+
+    checkSubscriptionForId(id);
+  }, (err) => console.error("signals/lastScan listener error:", err));
+}
+
+
+// Μικρό wrapper για να περάσουμε id (και προαιρετικά όνομα)
+async function checkSubscriptionForId(scannedId) {
+  if (!scannedId) return;
+  const loading = showLoadingPopup();
+  try {
+    const res = await fetch(
+      "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
+      { cache: "no-store" }
+    );
+    const data = await res.json();
+    hideLoadingPopup();
+
+    // ✅ ΠΑΝΤΑ από το Sheet:
+    const sheetName = String(data.name || "").trim();
+
+    // Αν θες ΜΟΝΟ μικρό όνομα από το Sheet:
+    const firstOnly = sheetName.split(/\s+/)[0] || "";
+
+    // 👉 Διάλεξε: α) ακριβώς όπως στο Sheet
+    const displayName = firstOnly;
+
+
+
+    showPopup(displayName, !!data.active);
+  } catch (e) {
+    console.error(e);
+    hideLoadingPopup();
+    showPopup("Σφάλμα", false);
+  }
+}
+  db.settings({
+    experimentalForceLongPolling: true,
+    useFetchStreams: false
+  });
+function todayEL() {
+    return new Date().toLocaleDateString('el-GR');
+  }
+</script>
+ <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: black;
+    }
+
+    .slideshow-container {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+        margin: 0;
+  padding: 0;
+    }
+
+    .slide {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;  /* 👈 πρόσθεσε αυτά */
+  width: 100%;
+  height: 100%;
+  margin: 0; padding: 0;                  /* 👈 σιγουριά */
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+}
+
+    .slide.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .status-icon {
+      width: 4vw;
+      height: 4vw;
+      vertical-align: middle;
+      margin-left: 1vw;
+    }
+    .slide.portrait {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide.portrait .overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.4); /* διαφάνεια + σκοτείνιασμα */
+  z-index: 0;
+}
+#digitalClock {
+  position: fixed;
+  top: 1.5vh;
+  left: 2vw;
+  font-size: 4vw;
+  font-family: 'Orbitron', sans-serif;
+  color: #00ffff;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.5vh 1vw;
+  border-radius: 12px;
+  z-index: 9999;
+  text-shadow: 0 0 5px #00ffff, 0 0 6px #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.1em;
+
+  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Όταν θέλουμε να το κρύψουμε */
+#digitalClock.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+/* Όταν θέλουμε να το εμφανίσουμε */
+#digitalClock.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+
+/* === Κείμενα popup με neon glow === */
+.popup-line {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 4.5vw;
+  font-weight: 500;
+  margin-bottom: 1.5vh;
+  color: white;
+}
+
+.popup-line.active {
+  color: #96e6a1;
+  text-shadow: 0 0 1px #00ff88, 0 0 4px #00ff88, 0 0 15px #00ff88;
+}
+
+.popup-line.inactive {
+  color: #ff7f7f;
+  text-shadow: 0 0 1px #ff0040, 0 0 4px #ff0040, 0 0 15px #ff0040;
+}
+/* === Fancy POPUP v2 === */
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(.7); }
+  60%  { opacity: 1; transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes neonPulse {
+  0%,100% { text-shadow: 0 0 6px rgba(0,255,170,.8), 0 0 18px rgba(0,255,170,.35); }
+  50% { text-shadow: 0 0 10px rgba(0,255,170,1), 0 0 26px rgba(0,255,170,.6); }
+}
+@keyframes neonPulseRed {
+  0%,100% { text-shadow: 0 0 6px rgba(255,70,100,.9), 0 0 18px rgba(255,70,100,.4); }
+  50% { text-shadow: 0 0 10px rgba(255,70,100,1), 0 0 26px rgba(255,70,100,.7); }
+}
+@keyframes ringSpin {
+  0% { transform: rotate(0deg); opacity:.85; }
+  50% { opacity:1; }
+  100% { transform: rotate(360deg); opacity:.85; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+#popup-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+-webkit-backdrop-filter: blur(4px);
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(0,255,200,.08), rgba(0,0,0,.85) 40%);
+  animation: fadeBg .4s ease;
+}
+@keyframes fadeBg { from {opacity:0} to {opacity:1} }
+
+.popup-card {
+  position: relative;
+  width: min(82vw, 900px);
+  padding: 5vh 5vw;
+  border-radius: 22px;
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 60px rgba(0,255,190,.25), inset 0 0 40px rgba(255,255,255,.02);
+  animation: popIn .6s cubic-bezier(.17,.97,.37,1);
+  overflow: hidden;
+  will-change: transform, opacity;
+transform: translateZ(0);
+contain: paint;
+}
+
+.popup-card::before, .popup-card::after {
+  content:""; position:absolute; inset:-40%;
+  border-radius: 50%;
+  border: 2px solid rgba(0,255,200,.35);
+  filter: blur(2px);
+  animation: ringSpin 12s linear infinite;
+  animation-delay: .45s;
+}
+.popup-card::after {
+  border-color: rgba(0,170,255,.28);
+  animation-duration: 18s;
+  mix-blend-mode: screen;
+  animation-delay: .55s;
+}
+.popup-card.active {
+  /* πράσινο-κυανό glow (όπως είχες) */
+  border-color: rgba(0,255,200,.28);
+  box-shadow: 0 10px 60px rgba(0,255,190,.25), inset 0 0 40px rgba(255,255,255,.02);
+}
+
+.popup-card.inactive {
+  /* ΚΟΚΚΙΝΟ περίγραμμα + κόκκινο εξωτερικό glow */
+  border-color: rgba(255,70,100,.35);
+  box-shadow: 0 10px 60px rgba(255,70,100,.25), inset 0 0 40px rgba(255,255,255,.02);
+}
+
+/* Animated δαχτύλιοι (οι πριν/μετά) */
+.popup-card.active::before,
+.popup-card.active::after {
+  border-color: rgba(0,255,200,.35);
+}
+.popup-card.active::after {
+  border-color: rgba(0,170,255,.28); /* δεύτερος δακτύλιος πιο κυανός */
+}
+
+/* ⛔ Inactive: ΚΟΚΚΙΝΟΙ και οι δύο δαχτύλιοι */
+.popup-card.inactive::before,
+.popup-card.inactive::after {
+  border-color: rgba(255,70,100,.35);
+}
+
+/* Hover wipe χρώμα ανά state */
+.popup-card.active .close-wipe {
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(0,255,150,.10), transparent 60%);
+}
+.popup-card.inactive .close-wipe {
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(255,70,100,.10), transparent 60%);
+}
+
+/* Προαιρετικά: και το overlay να έχει ελαφρύ tint ανά state */
+#popup-overlay.active {
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(0,255,200,.08), rgba(0,0,0,.85) 40%);
+}
+#popup-overlay.inactive {
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(255,70,100,.08), rgba(0,0,0,.85) 40%);
+}
+
+.popup-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(32px, 6vw, 72px);
+  letter-spacing: .02em;
+  margin: 0 0 1.2vh 0;
+  line-height: 1.05;
+  background: linear-gradient(90deg, #fff, #89ffe6, #00ffb0, #ffffff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+.popup-title.active {
+  position: relative;
+  z-index: 2;
+  animation: shimmer 2.5s linear infinite, neonPulse 1.6s ease-in-out infinite;
+}
+.popup-title.inactive {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(90deg, #fff, #ff8ca5, #ff4664, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.5s linear infinite, neonPulseRed 1.6s ease-in-out infinite;
+}
+
+.popup-line {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(18px, 3.3vw, 34px);
+  color: #e9fffb; opacity: 0; transform: translateY(10px);
+  margin: .6vh 0;
+  transition: opacity .5s, transform .5s;
+}
+.popup-line.show { opacity: 1; transform: translateY(0); }
+.popup-line b { font-weight: 700; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:.6rem;
+  padding:.5rem 1rem; border-radius:999px;
+  font-size: clamp(14px, 2.4vw, 22px);
+  margin-top:1vh;
+  backdrop-filter: blur(3px);
+}
+.badge.active { color:#0d1; background: rgba(0,255,150,.12); border:1px solid rgba(0,255,150,.35); }
+.badge.inactive { color:#f66; background: rgba(255,70,100,.12); border:1px solid rgba(255,70,100,.35); }
+
+.close-wipe {
+  position:absolute; inset:-2px; border-radius: inherit;
+  pointer-events:none; opacity:0;
+  background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(255,255,255,.06), transparent 60%);
+  transition: opacity .4s;
+}
+.popup-card:hover .close-wipe { opacity:1; }
+/* Αφαιρεί το glow και κρατά λευκό χρώμα μόνο για τις σειρές κειμένου */
+.popup-line {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+/* ===== Loading Popup (glass + neon ring) ===== */
+#popup-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  opacity: 0;
+  animation: loadingFadeIn .35s ease forwards;
+}
+
+.loading-card {
+  position: relative;
+  width: min(80vw, 680px);
+  padding: min(4vh, 40px) min(4vw, 40px);
+  border-radius: 22px;
+  background: rgba(10, 14, 22, .65);
+  box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+  overflow: hidden;
+  transform: translateY(10px) scale(.98);
+  animation: cardLift .5s cubic-bezier(.2,.8,.2,1) .1s forwards;
+}
+
+/* Neon spinning ring border */
+.loading-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 24px;
+  background: conic-gradient(from 0deg, #00f0ff, #74f2ce, #00ffa3, #00f0ff);
+  filter: blur(6px) saturate(1.2);
+  animation: spin 2.4s linear infinite;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  padding: 2px;
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: .55;
+}
+
+/* Inner glass layer */
+.loading-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Title + dots */
+.loading-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(22px, 4.2vw, 40px);
+  color: #eaffff;
+  text-align: center;
+  letter-spacing: .06em;
+  margin: 0 0 .6em;
+  text-shadow: 0 0 6px rgba(0,255,214,.45);
+  animation: glowPulse 1.6s ease-in-out infinite;
+}
+
+/* Sub text */
+.loading-sub {
+  font-size: clamp(14px, 2.2vw, 18px);
+  color: rgba(255,255,255,.8);
+  text-align: center;
+  margin-bottom: 1.2em;
+}
+
+/* Progress bar with shimmer */
+.loading-progress {
+  height: 12px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.loading-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(0,255,214,.2), rgba(0,255,214,.9), rgba(0,255,214,.2));
+  animation: sweep 2.2s ease-in-out infinite, shimmer 1.2s linear infinite;
+}
+
+/* Keyframes */
+@keyframes loadingFadeIn {
+  to { opacity: 1; }
+}
+@keyframes cardLift {
+  to { transform: translateY(0) scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes glowPulse {
+  0%,100% { text-shadow: 0 0 6px rgba(0,255,214,.35); }
+  50% { text-shadow: 0 0 14px rgba(0,255,214,.75); }
+}
+
+@keyframes sweep {
+  0%   { width: 0%; }
+  50%  { width: 78%; }
+  100% { width: 100%; }
+}
+@keyframes shimmer {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+  100% { filter: brightness(1); }
+}
+
+/* Out animation */
+#popup-loading.hide {
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+/* Λογότυπο λιονταριού στο popup */
+.holo-logo {
+  width: clamp(60px, 14vw, 110px);
+  height: clamp(60px, 14vw, 110px);
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 1em;
+  border: 3px solid #00ffd5;
+  box-shadow: 0 0 15px rgba(0,255,214,.6), inset 0 0 12px rgba(0,255,214,.4);
+  animation: logoPulse 2.8s ease-in-out infinite, logoRotate 12s linear infinite;
+}
+
+.holo-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;  /* 👈 αντί για cover για πιο “ξε-ζουμαρισμένο” */
+  background-color: #000; /* προαιρετικό για να γεμίζει γύρω γύρω */
+  padding: 6%; /* λίγο “μαξιλάρι” γύρω από το λιοντάρι */
+  box-sizing: border-box;
+}
+
+/* Keyframes για logo */
+@keyframes logoPulse {
+  0%,100% { box-shadow: 0 0 15px rgba(0,255,214,.6), inset 0 0 12px rgba(0,255,214,.4); }
+  50%     { box-shadow: 0 0 25px rgba(0,255,214,.9), inset 0 0 20px rgba(0,255,214,.6); }
+}
+
+@keyframes logoRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* ============ XDISPLAY • Neo Leaderboard ============ */
+/* ΟΛΑ νέα prefixes για να μην “πιάνουν” τα παλιά: xlb- */
+
+:root{
+  --xlb-bg:#0c1118;
+  --xlb-panel:#121a24;
+  --xlb-ink:#eaf6ff;
+  --xlb-muted:rgba(234,246,255,0.64);
+  --xlb-glow:#57ffd6;
+  --xlb-accent:#5ff0ff;
+  --xlb-accent-2:#9bf7c9;
+  --xlb-gold:#ffd166;
+  --xlb-silver:#d6e4f0;
+  --xlb-bronze:#c68b59;
+}
+/* full viewport για το container & κάθε slide */
+.slideshow-container,
+.slide {
+  height: 100vh;
+  width: 100vw;          /* νέο */
+  margin: 0;
+  padding: 0;
+}
+
+/* σταθερό κάθετο padding για τη leaderboard slide (px για TV/cast) */
+:root { --slide-vpad: 12px; }
+
+/* slide wrapper */
+.xlb-slide{
+  width: 100vw;          /* νέο */
+  height: 100vh;         /* ήδη υπάρχει, κρατάμε */
+  padding: 0;            /* από 2vh 0 -> 0 για edge‑to‑edge */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(1200px 800px at 50% 50%, rgba(95,240,255,.08), var(--xlb-bg) 45%);
+}
+
+/* animated pulse lines background (αντί για περιστρεφόμενο τετράγωνο) */
+
+@keyframes xlbSweep {
+  0% { background-position: 0 0; }
+  100% { background-position: 800px 0; }
+}
+
+/* κεντρικό panel */
+.xlb-panel{
+  width: 100%;
+  height: 100%;          /* νέο: γεμίζει κατακόρυφα */
+  max-width: none;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 0;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;       /* ξανά σε hidden για να “κάθεται” */
+  display: flex;
+  flex-direction: column; /* header + list */
+  transform: none;        /* να ΜΗν κάνει scale */
+  transform-origin: top center;
+  margin: 0;
+}
+
+/* λεπτό neon frame (πολύ πιο διακριτικό) */
+.xlb-panel::before{
+  content:"";
+  position:absolute; inset:0; pointer-events:none;
+  border-radius:inherit;
+  padding:1px;
+  background: conic-gradient(from 0deg, var(--xlb-accent), var(--xlb-accent-2), var(--xlb-accent));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity:.28;
+  filter: blur(2px);
+}
+
+.xlb-head{
+  padding: clamp(8px, 1.4vh, 18px) clamp(10px, 2vw, 24px) clamp(6px, 1.0vh, 14px);
+}
+.xlb-kicker{
+  font-size: clamp(13px,2vw,29px);
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color: var(--xlb-muted);
+  text-align: center;
+}
+.xlb-title{
+  font-family:'Orbitron',sans-serif;
+  font-size: clamp(32px,6vw,75px);
+  letter-spacing:.04em;
+  color:var(--xlb-ink);
+  text-shadow: 0 0 12px rgba(95,240,255,.35);
+  margin-top:.2rem;
+}
+.xlb-underline{
+  width: min(70vw, 900px);
+  height: clamp(2px, 0.6vh, 6px);
+  margin: clamp(6px, 1.0vh, 12px) auto 0;
+}
+@keyframes xlbUnderline{
+  0%,100%{ transform:scaleX(.6); opacity:.7; }
+  50%{ transform:scaleX(1); opacity:1; }
+}
+
+
+/* STEP 1: default state ΟΡΑΤΟ */
+.xlb-item{
+  --pct: 0;
+  display: grid;
+  grid-template-columns: 88px 80px 1fr max-content; /* rank | avatar | name | count */
+  align-items: center;
+  column-gap: 24px;
+  row-gap: .9rem;
+
+  height: 100%;               /* γεμίζει το κελί του grid (1/10 του ύψους) */
+  margin: 0;                  /* όχι extra κενά, τα ελέγχει το grid gap */
+  padding: .7rem .9rem;
+
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 16px;
+  color: var(--xlb-ink);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+
+  position: relative;
+  overflow: hidden;
+
+  /* default ορατό (το κρύβει μόνο το :not(.in)) */
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Κρυφό ΜΟΝΟ πριν πάρει .in (stagger) – το έχουμε ήδη από το προηγούμενο βήμα */
+.xlb-item:not(.in){
+  transform: translateY(8px);
+  opacity: 0;
+}
+/* row in */
+.xlb-item.in{
+  animation: xlbRowIn .45s cubic-bezier(.2,.8,.2,1) var(--d, 0ms) forwards;
+}
+@keyframes xlbRowIn{ to{ transform:translateY(0); opacity:1; } }
+
+/* progress meter (λεπτή γραμμή με sheen) */
+/* 🥇 default (πρώτος ή άλλοι) */
+.xlb-item::after {
+  content:"";
+  position:absolute; left:0; right:0; bottom:0;
+  height:5px;
+  background: linear-gradient(90deg,
+    rgba(95,240,255,.2),
+    rgba(95,240,255,.85),
+    rgba(155,247,201,.85),
+    rgba(95,240,255,.2)
+  );
+  width: calc(var(--pct) * 1%);
+  box-shadow: 0 0 10px rgba(95,240,255,.5);
+  transition: width .8s ease-out;
+}
+
+/* 🥈 Ασημί */
+.xlb-item.rank-2::after {
+  background: linear-gradient(90deg,
+    rgba(192,192,192,.2),
+    rgba(192,192,192,.85),
+    rgba(230,230,230,.85),
+    rgba(192,192,192,.2)
+  );
+  box-shadow: 0 0 10px rgba(192,192,192,.5);
+}
+
+/* 🥉 Χάλκινο */
+.xlb-item.rank-3::after {
+  background: linear-gradient(90deg,
+    rgba(184,115,51,.2),
+    rgba(184,115,51,.85),
+    rgba(205,133,63,.85),
+    rgba(184,115,51,.2)
+  );
+  box-shadow: 0 0 10px rgba(184,115,51,.5);
+}
+/* rank badge – κύκλος με λεπτό gradient ring */
+.xlb-rank{
+  width: clamp(44px, 7vh, 96px);
+  height: clamp(44px, 7vh, 96px);
+  border-radius:50%;
+  display:grid; place-items:center;
+  line-height: 1;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.08);
+  position:relative;
+  font-weight:800;
+  font-size: clamp(30px, 4vh, 50px);
+  letter-spacing:.02em;
+}
+.xlb-rank::before{
+  content:"";
+  position:absolute; inset:-2px; border-radius:inherit;
+  background: conic-gradient(from 0deg, var(--xlb-accent), var(--xlb-accent-2), var(--xlb-accent));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding:2px; opacity:.35; filter: blur(1px);
+}
+
+.xlb-count{
+  height: 100%;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight:800;
+  font-size: clamp(30px, 2.6vh, 40px);
+  padding: clamp(6px, 1vh, 12px) clamp(10px, 1.4vw, 18px);
+  min-width: clamp(56px, 8vh, 120px);
+  white-space: nowrap;
+
+  color: var(--xlb-ink);
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:18px;
+}
+
+/* Top 3 styles */
+.xlb-item.gold   .xlb-rank{ color:var(--xlb-gold); }
+.xlb-item.silver .xlb-rank{ color:var(--xlb-silver); }
+.xlb-item.bronze .xlb-rank{ color:var(--xlb-bronze); }
+
+
+/* rank-up effect (τρέχει ΜΟΝΟ όταν η slide είναι active) */
+@keyframes xlbRankUp {
+  0%   { transform: translateY(0); box-shadow: inset 0 0 0 1px rgba(95,240,255,.18); }
+  25%  { transform: translateY(-8px); box-shadow: 0 0 26px rgba(95,240,255,.72); }
+  60%  { transform: translateY(-3px); box-shadow: 0 0 14px rgba(95,240,255,.48); }
+  100% { transform: translateY(0); box-shadow: inset 0 0 0 1px rgba(95,240,255,.18); }
+}
+/* rank‑up: παγωμένο by default + delay από CSS var */
+.xlb-item.rank-up{
+  animation: xlbRankUp .9s ease-out;
+  animation-play-state: paused;          /* δεν παίζει μέχρι να γίνει active το slide */
+  animation-delay: var(--rankDelay, 0s); /* θα του δώσουμε 5s από JS */
+  opacity: 1 !important;                 /* safety να μη κρυφτεί ποτέ */
+  visibility: visible !important;
+}
+
+/* Τρέχει ΜΟΝΟ όταν το slide είναι ενεργό */
+.leaderboard-slide.active .xlb-item.rank-up{
+  animation-play-state: running;
+}
+.slide.leaderboard-slide.active .xlb-item.rank-up{ animation-play-state: running; }
+
+/* responsive tweaks */
+@media (max-width:720px){
+  .xlb-item{ grid-template-columns: 72px 1fr 86px; }
+  .xlb-rank{ width:56px; height:56px;}
+}
+@media (max-height: 760px){
+  .xlb-title{ font-size: clamp(24px,4.6vw,42px); }
+  .xlb-item{ padding: .6rem .85rem; margin: .4rem 0; }
+}
+/* ===== Pro Mode add-ons ===== */
+
+/* grid με avatar στήλη */
+.xlb-item{
+  grid-template-columns: 88px 80px 1fr max-content;/* avatar col από 56px -> 80px */
+  column-gap: 24px;                           /* μεγαλύτερο κενό ανάμεσα στις στήλες */
+  row-gap: .9rem; }
+
+.xlb-name{
+  font-size: clamp(28px, 4vh, 55px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #f5fbff;
+  text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  display: flex; align-items: center; gap: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ΜΟΝΟ για τον 1ο */
+.xlb-item[data-rank="1"] .xlb-name {
+  font-size: clamp(55px, 4.9vh, 75px); /* ↑ αυξάνεις εδώ το μέγεθος */
+  font-weight: 700;                    /* πιο έντονο αν θέλεις */
+}
+
+/* avatar bubble */
+.xlb-avatar{
+  width: clamp(40px, 6.2vh, 80px);
+  height: clamp(40px, 6.2vh, 80px);
+  border-radius: 50%;
+  position: relative; overflow: hidden;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow: 0 4px 12px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.xlb-avatar::before{
+  content:"";
+  position:absolute; inset:-2px; border-radius:50%;
+  padding:2px;
+  background: conic-gradient(from 0deg, #6af6ff, #a9ffd6, #6af6ff);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity:.35; filter: blur(1px);
+}
+
+/* delta badge (⇧ / ⇩) δίπλα στο όνομα */
+.xlb-delta{
+  font-size: .7em;
+  margin-left: 9px;
+  font-weight: 800;
+  padding: .16rem .60rem;
+  border-radius: 999px;
+  line-height: 1;
+  letter-spacing: .02em;
+  border: 1px solid;
+    border-width: 2px; /* κρατά το ίδιο χρώμα από τα .up/.down/.same */
+  border-style: solid;
+}
+.xlb-delta.up{
+  color:#0fd67a; background: rgba(15,214,122,.10); border-color: rgba(15,214,122,.35);
+}
+.xlb-delta.down{
+  color:#ff6b7a; background: rgba(255,107,122,.12); border-color: rgba(255,107,122,.38);
+}
+.xlb-delta.same{
+  color:#9db4c2; background: rgba(157,180,194,.10); border-color: rgba(157,180,194,.28);
+}
+
+/* custom SVG medals: δίνουμε πιο “premium” look στον κύκλο rank */
+.xlb-item.medal .xlb-rank {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  .xlb-item.medal .xlb-rank {
+    width: 100px;
+    height: 100px;
+  }
+}
+.xlb-rank svg{ width: 80px; height: 80px; }
+
+/* ελαφρώς πιο φωτεινά στοιχεία */
+.xlb-count{
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.16);
+}
+
+.xlb-item.medal.gold   .xlb-name .xlb-name-text { color: #ffd54a; text-shadow: 0 0 45px rgba(255, 213, 74, .25); }
+.xlb-item.medal.silver .xlb-name .xlb-name-text { color: #d0d8e0; text-shadow: 0 0 10px rgba(208, 216, 224, .22); }
+.xlb-item.medal.bronze .xlb-name .xlb-name-text { color: #d19a66; text-shadow: 0 0 10px rgba(209, 154, 102, .22); }
+
+/* B. ΜΙΝΙΜΑΛ γραμμές μόνο στις γωνίες */
+.xlb-panel { position: relative; }
+.xlb-corners { pointer-events: none; position: absolute; inset: 0; }
+.xlb-corners .c {
+  position: absolute;
+  width: 140px; height: 140px; /* “πεδίο” γωνίας, οι ίδιες οι γραμμές είναι ψιλές */
+  opacity: .9; filter: drop-shadow(0 0 6px rgba(0, 255, 214, .18));
+}
+
+/* κάθε γωνία έχει 2 λεπτές γραμμές (οριζόντια & κάθετη) με ελαφρύ pulse */
+@keyframes cornerPulse { 
+  0%,100% { opacity: .55; } 
+  50% { opacity: .9; } 
+}
+
+.xlb-corners .c::before,
+.xlb-corners .c::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(90deg, rgba(0,255,214,.0), rgba(0,255,214,.8), rgba(0,255,214,.0));
+  animation: cornerPulse 3.2s ease-in-out infinite;
+}
+
+/* top-left */
+.xlb-corners .tl { top: 10px; left: 10px; }
+.xlb-corners .tl::before { /* οριζόντια γραμμή */
+  top: 0; left: 0; width: 120px; height: 3px;
+}
+.xlb-corners .tl::after {  /* κάθετη γραμμή */
+  top: 0; left: 0; width: 3px; height: 120px;
+  background: linear-gradient(180deg, rgba(0,255,214,.0), rgba(0,255,214,.8), rgba(0,255,214,.0));
+}
+
+/* top-right */
+.xlb-corners .tr { top: 10px; right: 10px; transform: scaleX(-1); }
+
+/* bottom-left */
+.xlb-corners .bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+
+/* bottom-right */
+.xlb-corners .br { bottom: 10px; right: 10px; transform: scale(-1); }
+
+/* κράτα το λεπτό neon frame, αλλά κάτω από το content */
+.xlb-panel{ position: relative; z-index: 0; }
+.xlb-panel::before{ z-index: 0; }
+.xlb-item::after{
+  height: clamp(2px, 0.7vh, 6px);
+} /* λίγο πιο “γεμάτη” μπάρα */
+/* η λίστα να κάθεται πάνω από οτιδήποτε διακοσμητικό και να μην κολλάει στο header */
+.xlb-list{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  /* 1ος πιο “ψηλός”, οι υπόλοιποι ίσοι */
+  grid-template-rows: 1.22fr repeat(7, 1fr);
+  row-gap: clamp(6px, 1.2vh, 16px);       /* λίγο μεγαλύτερο κενό */
+  column-gap: 0;
+  padding: clamp(6px, 1.2vh, 16px) clamp(10px, 2vw, 24px) clamp(8px, 1.6vh, 18px);
+  overflow: hidden;
+}
+/* extra “ανάσα” μόνο κάτω από τον 1ο */
+.xlb-item[data-rank="1"]{ margin-bottom: clamp(6px, 1vh, 14px); }
+/* το πρώτο row να μη “κολλάει” πάνω */
+.xlb-item:first-child{
+  margin-top: 0.6rem;
+}
+/* Neon glow για τους 3 πρώτους */
+/* 🏆 Πλήρης διαφοροποίηση 1ης θέσης */
+.xlb-item[data-rank="1"]{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)),
+    radial-gradient(800px 240px at 0% 50%, rgba(255,209,102,.16), transparent 60%);
+  border-color: rgba(255, 209, 102, .55);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 209, 102, .32),
+    0 0 22px rgba(255, 209, 102, .18);
+  position: relative;
+}
+
+/* λίγο μεγαλύτερα αλλά χωρίς να “πέφτουν” – κέντρο πάντα */
+.xlb-item[data-rank="1"] .xlb-rank{
+  transform: scale(1.05);
+  transform-origin: center center;
+}
+.xlb-item[data-rank="1"] .xlb-avatar{
+  transform: scale(1.04);
+  transform-origin: center center;
+}
+/* πιο έντονη progress-bar μόνο για τον 1ο */
+
+
+/* λεπτή neon μπάρα στην αριστερή άκρη */
+.xlb-item[data-rank="1"]::before{
+  content:"";
+  position:absolute; left:0; top:8px; bottom:8px; width:4px;
+  border-radius:4px;
+  background: linear-gradient(180deg, #ffe17e, #ffcc4d);
+  box-shadow: 0 0 18px #ffcc4d, 0 0 4px rgba(0,0,0,.25) inset;
+  opacity:.95;
+}
+
+/* λίγο “μεγαλύτεροι” οι badge/avatars για τον 1ο */
+.xlb-item[data-rank="1"] .xlb-rank{ transform: scale(1.08); }
+.xlb-item[data-rank="1"] .xlb-avatar{ transform: scale(1.05); }
+
+/* πιο premium counter chip */
+.xlb-item[data-rank="1"] .xlb-count{
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.06));
+  border-color: rgba(255, 209, 102, .55);
+  color: #fff7dc;
+  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+}
+
+/* neon glow στο όνομα του 1ου */
+.xlb-item[data-rank="1"] .xlb-name .xlb-name-text{
+  color: #ffe385;
+  text-shadow:
+    0 0 10px rgba(255, 227, 133, .45),
+    0 0 18px rgba(255, 199, 72, .30);
+}
+
+/* μικρή κορώνη ribbon στην πάνω-δεξιά γωνία της σειράς */
+.xlb-item[data-rank="1"] .xlb-champ{
+  position:absolute; right:10px; top:-6px;
+  width:48px; height:48px; opacity:.9;
+  filter: drop-shadow(0 6px 10px rgba(255, 209, 102, .25));
+}
+
+/* διακριτικό highlight όταν γίνεται rank-up και είναι 1ος */
+.xlb-item[data-rank="1"].rank-up{
+  animation: champPulse .9s ease-out;
+}
+@keyframes champPulse{
+  0%{ box-shadow: 0 0 0 rgba(255, 209, 102, 0.0); }
+  40%{ box-shadow: 0 0 42px rgba(255, 209, 102, .45); }
+  100%{ box-shadow: 0 10px 36px rgba(255, 209, 102, .20); }
+}
+
+/* Wrapper για το νούμερο και την κορόνα του πρώτου */
+.crown-wrapper{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;     /* κάθετο κέντρο */
+  gap: clamp(3px, .5vh, 8px);
+}
+
+/* Στυλ για την κορόνα */
+.crown-wrapper .xlb-crown {
+  display: block;
+  line-height: 0;
+}
+
+.crown-wrapper .xlb-crown svg{
+  width: clamp(36px, 4.6vh, 56px);
+  height: clamp(36px, 4.6vh, 56px);
+  transform: none;             /* όχι translateY */
+}
+
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  #popup-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* 2) Σβήνουμε το έξτρα conic-glow από το ::before */
+
+
+/* 3) Το εικόνισμα μεταλλίου να γεμίζει σωστά το badge box */
+.xlb-rank .xlb-medal{
+  display: block;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;                 /* σωστές αναλογίες */
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.35)); /* διακριτική σκιά */
+}
+
+/* 4) Αν υπάρχει κανόνας για SVG μέσα στο .xlb-rank, κρύψ’ το στους medal rows */
+
+.xlb-item[data-rank="1"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.xlb-item[data-rank="1"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 250%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.25) 50%,
+    transparent 100%
+  );
+  animation: shineRow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shineRow {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  40%  { transform: translateX(60%); opacity: 1; }
+  50%  { opacity: 0; }
+  100% { transform: translateX(60%); opacity: 0; }
+}
+/* 🥈 SILVER – 2η θέση */
+.xlb-item[data-rank="2"]::after,
+.xlb-item.medal.silver::after,
+.xlb-item.silver::after,
+.xlb-item.rank-2::after {
+  background: linear-gradient(90deg,
+    rgba(192,192,192,.25),
+    rgba(235,235,235,.95),
+    rgba(192,192,192,.65)
+  ) !important;
+  box-shadow: 0 0 10px rgba(192,192,192,.55) !important;
+}
+
+/* 🥉 BRONZE – 3η θέση */
+.xlb-item[data-rank="3"]::after,
+.xlb-item.medal.bronze::after,
+.xlb-item.bronze::after,
+.xlb-item.rank-3::after {
+  background: linear-gradient(90deg,
+    rgba(184,115,51,.25),
+    rgba(205,133,63,.95),
+    rgba(184,115,51,.65)
+  ) !important;
+  box-shadow: 0 0 10px rgba(184,115,51,.55) !important;
+}
+/* Σειρά τίτλου με δύο logos */
+.xlb-title-row{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.8vw, 36px);
+
+}
+
+/* “Glass” logo bubbles links/εικόνες */
+.xlb-logo{
+  width: clamp(46px, 7.5vw, 88px);
+  height: clamp(46px, 7.5vw, 88px);
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+
+  /* glass */
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 8px 26px rgba(0,0,0,.35),
+    inset 0 0 0 1px rgba(255,255,255,.06),
+    0 0 18px rgba(95,240,255,.22); /* διακριτικό νεον γύρω γύρω */
+}
+
+/* λεπτός conic “νεον” δακτύλιος */
+.xlb-logo::before{
+  content:"";
+  position:absolute; inset:-2px; border-radius:50%;
+  padding:2px;
+  background: conic-gradient(from 0deg, #6af6ff, #a9ffd6, #6af6ff);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity:.35; filter: blur(1px);
+}
+
+/* η εικόνα μέσα – να φαίνεται καθαρά με διαφανές φόντο */
+.xlb-logo img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 0 10px rgba(0,0,0,.35));
+  
+}
+
+/* Τίτλος να κάθεται όμορφα ανάμεσα στα logos */
+.xlb-title-row .xlb-title{
+  margin: 0; /* αν υπήρχε top margin από πριν */
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+/* Μικρές οθόνες – κρύψε τα logos για να μη “σπάει” */
+@media (max-width: 720px){
+  .xlb-logo{ display:none; }
+}
+/* === Centering & medal size tweaks (override) === */
+
+/* 1) Απόλυτο κεντράρισμα avatar & rank στο κελί τους */
+.xlb-avatar,
+.xlb-rank{
+align-self: center;          /* κάθετα στο grid row */
+  justify-self: center;        /* οριζόντια στο grid column */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2) Avatar: να “κάθεται” ακριβώς στο κέντρο χωρίς οπτική καθίζηση */
+.xlb-avatar{
+  width: clamp(40px, 6.2vh, 80px) !important;
+  height: clamp(40px, 6.2vh, 80px) !important;
+}
+.xlb-avatar img{
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* 3) Rank badge: καθαρό κεντράρισμα αριθμού/εικόνας */
+.xlb-rank{
+  line-height: 1;                              /* να μην «τραβάει» προς τα κάτω */
+  width: clamp(44px, 7vh, 96px);
+  height: clamp(44px, 7vh, 96px);
+}
+
+/* 4) Μικρότερα μετάλλια μέσα στο rank badge (χωρίς να «κολλάνε» στα τοιχώματα) */
+.xlb-rank .xlb-medal{
+  width: 82% !important;
+  height: 82% !important;
+  object-fit: contain !important;
+}
+
+/* 6) (προαιρετικό) λίγο παραπάνω “ανάσα” στο κελί ώστε να φαίνεται εντελώς centered */
+.xlb-item{
+  padding-top: clamp(6px, 0.8vh, 14px) !important;
+  padding-bottom: clamp(6px, 0.8vh, 14px) !important;
+}
+/* --- Fix: 1ος κρύβει περιεχόμενο (z-index/stacking order) --- */
+
+/* Το row να είναι stacking context */
+.xlb-item{
+  position: relative;
+  z-index: 0;
+}
+
+/* ΌΛΑ τα overlays (progress ::after, neon ::before, shine στοιχείο) κάτω από το content */
+.xlb-item::before,
+.xlb-item::after,
+.xlb-item .xlb-shine{
+  z-index: 0;
+  pointer-events: none; /* να μην “πιάνει” clicks */
+}
+
+/* Το πραγματικό περιεχόμενο ΠΑΝΩ απ’ όλα */
+.xlb-item .xlb-rank,
+.xlb-item .xlb-avatar,
+.xlb-item .xlb-name,
+.xlb-item .xlb-count{
+  position: relative;
+  z-index: 1;
+}
+
+/* Προαιρετικά, πιο ήπια μεγέθη για να μη “πιέζονται” */
+.xlb-item[data-rank="1"] .xlb-rank{ transform: scale(1.03); }
+.xlb-item[data-rank="1"] .xlb-avatar{ transform: scale(1.03); }
+/* --- First row: premium look χωρίς να σκεπάζει τον 2ο --- */
+/* Σβήσιμο κυκλακίου στους πρώτους τρεις */
+.xlb-item.medal .xlb-rank,
+.xlb-item.medal .xlb-rank::before {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  content: none !important;
+}
+/* Μικρότερο κυκλάκι στους υπόλοιπους */
+.xlb-item:not(.medal) .xlb-rank {
+  width: clamp(47px, 4.3vh, 60px) !important;
+  height: clamp(47px, 4.3vh, 60px) !important;
+  line-height: 1 !important;
+}
+/* Πλαίσιο κορώνας + αριθμού ΜΟΝΟ για τον 1ο: μικρότερο και centered */
+.xlb-item[data-rank="1"] .crown-wrapper{
+  align-self: center;          /* κάθετα στο κέντρο του row */
+  justify-self: end;           /* δεξιά στο grid */
+  display: flex;
+  flex-direction: column;      /* κορώνα πάνω, αριθμός κάτω */
+  align-items: center;
+  gap: clamp(1px, .1vh, 1px);
+
+  /* ΑΚΡΙΒΩΣ όπως .xlb-count */
+  padding: clamp(1px, 0vh, 1px) clamp(4px, .8vw, 9px);
+  min-width: clamp(56px, 8vh, 120px);
+  border-radius: 18px;
+  background: rgba(255,255,255,.08);
+
+  /* Χρυσό περίγραμμα (όχι glow) */
+  border: 1px solid rgba(255, 209, 102, .65);
+}
+
+/* Μέγεθος κορώνας λίγο μικρότερο */
+.xlb-item[data-rank="1"] .crown-wrapper .xlb-crown svg{
+  width: clamp(32px, 3.6vh, 46px);
+  height: clamp(32px, 3.6vh, 46px);
+  padding: 2px, .9vw, 7px;
+}
+
+/* Μέγεθος αριθμού προπονήσεων πιο “σφιχτό” */
+.xlb-item[data-rank="1"] .crown-wrapper .xlb-count-number {
+  font-weight: 800;
+  font-size: clamp(30px, 2.6vh, 40px);
+  line-height: 1;
+}
+
+  </style>
+</head>
+<body>
+  <div id="digitalClock"></div>
+
+  <div class="slideshow-container">
+
+<div class="slide leaderboard-slide">
+  <div class="xlb-safe">
+    <div class="xlb-panel">
+      <!-- ΟΛΟ το περιεχόμενο του πίνακα σου -->
+    </div>
+  </div>
+</div>
+
+    <!-- ⬇️ Το Leaderboard θα προστεθεί εδώ από την populateLeaderboard() -->
+  </div>
+
+  <script>
+    const PREV_RANKS_KEY = "previousRanks";
+window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(PREV_RANKS_KEY) || "{}");
+    // Slideshow
+let slides = [];
+let currentSlide = 0;
+let slideTimer;
+// πόσο μένουν τα υπόλοιπα & πόσο ο leaderboard (ms)
+const DURATION_DEFAULT    = 60000;   // 5s
+const DURATION_LEADERBOARD = 1000000; // 15s (ό,τι θες)
+function showSlide(index) {
+  clearTimeout(slideTimer);
+
+  slides.forEach(s => s.classList.remove('active'));
+
+  const slideEl = slides[index];
+  slideEl.classList.add('active');
+
+  const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
+  document.querySelectorAll('.leaderboard-slide').forEach(s => {
+    s.style.removeProperty('--rankDelay');
+  });
+  if (isLeaderboard) {
+    slideEl.style.setProperty('--rankDelay', '5s');
+  }
+
+  const clock = document.getElementById("digitalClock");
+  if (clock) {
+    clock.classList.toggle("hidden",  isLeaderboard);
+    clock.classList.toggle("visible", !isLeaderboard);
+  }
+
+  const duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
+
+if (isLeaderboard && typeof retriggerRankAnims === 'function') {
+  setTimeout(() => retriggerRankAnims(slideEl), 80);
+}
+
+slideTimer = setTimeout(() => {
+  currentSlide = (currentSlide + 1) % slides.length;
+  showSlide(currentSlide);
+}, duration);
+}
+function retriggerRankAnims(root = document) {
+  root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
+    el.style.animation = 'none';
+    void el.offsetHeight;
+    el.style.animation = '';
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  // αρχικό render από τη μνήμη του μήνα
+  const initialRows = getRowsFromMonthlyMemory(8);
+  if (initialRows.length) {
+    renderLeaderboardFromRows(initialRows);
+  } else {
+    populateLeaderboard(); // αν θες να γεμίσει με local mock/attendanceData όπως πριν
+  }
+
+  startRealtimeLeaderboard();
+  startScanSignalListener();
+  resetMonthlyDataIfNeeded?.();
+
+  slides = document.querySelectorAll('.slide');
+  showSlide(0);
+});
+
+    // Name formatting rules
+    function formatName(name) {
+      if (!name || typeof name !== "string") return name;
+      name = name.trim().toUpperCase();
+
+      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ", "ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ","ΘΑΝΟΣ"];
+
+      if (name.endsWith("ΟΣ")) {
+        if (exceptions.includes(name)) {
+          return name.slice(0, -1); // ΣΤΕΛΙΟΣ → ΣΤΕΛΙΟ
+        } else {
+          return name.slice(0, -2) + "Ε"; // ΝΙΚΟΣ → ΝΙΚΕ
+        }
+      }
+
+      if (name.endsWith("ΗΣ")) {
+        return name.slice(0, -1); // ΠΑΝΑΓΗΣ → ΠΑΝΑΓΗ
+      }
+
+      if (name.endsWith("ΑΣ")) {
+        return name.slice(0, -1); // ΘΑΝΑΣΗΣ → ΘΑΝΑΣΗ
+      }
+
+      return name;
+    }
+
+    // Show popup
+function showPopup(name, isActive) {
+  // Καλημέρα/Καλησπέρα
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Καλημέρα" : "Καλησπέρα";
+
+  // Μόνο μικρό όνομα (σε περίπτωση που ήρθε full name)
+  const firstOnly = String(name || "").trim().split(/\s+/)[0] || "";
+  const fixedName = formatName(firstOnly);
+
+  // Overlay
+const overlay = document.createElement("div");
+overlay.id = "popup-overlay";
+overlay.classList.add(isActive ? "active" : "inactive"); // <-- ΠΡΟΣΘΗΚΗ
+  overlay.addEventListener("mousemove", (e) => {
+    const r = overlay.getBoundingClientRect();
+    const card = overlay.querySelector(".close-wipe");
+    if (card) {
+      card.style.setProperty("--x", `${e.clientX - r.left}px`);
+      card.style.setProperty("--y", `${e.clientY - r.top}px`);
+    }
+  });
+
+  // Κάρτα
+// Κάρτα
+const card = document.createElement("div");
+card.className = `popup-card ${isActive ? "active" : "inactive"}`; // <-- ΠΡΟΣΘΗΚΗ
+
+  // Περιεχόμενο
+ card.innerHTML = `
+  <div class="close-wipe"></div>
+
+  <div class="popup-title ${isActive ? "active" : "inactive"}">
+    ${greeting} ${fixedName}
+  </div>
+
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.08s">
+    Η συνδρομή σου είναι <b>${isActive ? "ενεργή" : "ανενεργή"}</b>.
+  </div>
+
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.16s">
+    ${isActive ? "Καλή προπόνηση!" : "Η ομάδα μας σε περιμένει!"}
+  </div>
+
+  <div class="popup-line ${isActive ? "active" : "inactive"}" style="transition-delay:.24s">
+    <span class="badge ${isActive ? "active" : "inactive"}">
+      ${isActive ? "🟢 Active Member" : "🔴 Inactive Member"}
+    </span>
+  </div>
+`;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // staggered εμφάνιση γραμμών
+  requestAnimationFrame(() => {
+    overlay.querySelectorAll(".popup-line").forEach((el) => {
+      // δώσε χρόνο στην είσοδο της κάρτας
+      setTimeout(() => el.classList.add("show"), parseFloat(el.style.transitionDelay || "0") * 1000 + 60);
+    });
+  });
+
+  // Αυτόματο κλείσιμο
+  setTimeout(() => {
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity .4s ease";
+    setTimeout(() => overlay.remove(), 400);
+    localStorage.removeItem("lastScannedId");
+  }, 4800);
+}
+
+  function getMonthlyCounts() {
+  const raw = localStorage.getItem("attendanceData"); // ✅ ΠΡΟΣΟΧΗ εδώ
+  if (!raw) return {};
+
+  const data = JSON.parse(raw);
+  const now = new Date();
+  const thisMonth = now.getMonth() + 1;
+  const thisYear = now.getFullYear();
+
+  const counts = {}; // { id: { name: "...", count: n } }
+
+  for (const dateStr in data) {
+    const [day, month, year] = dateStr.split("/").map(Number);
+    if (month === thisMonth && year === thisYear) {
+      data[dateStr].forEach(entry => {
+        if (entry.id && entry.name && entry.type !== "income") {
+          if (!counts[entry.id]) {
+            counts[entry.id] = { name: entry.name, count: 0 };
+          }
+          counts[entry.id].count += 1;
+        }
+      });
+    }
+  }
+
+  return counts;
+}
+function resetMonthlyDataIfNeeded() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const lastReset = localStorage.getItem("lastLeaderboardReset");
+  const [lastYear, lastMonth] = lastReset ? lastReset.split("-").map(Number) : [];
+
+  if (lastYear !== currentYear || lastMonth !== currentMonth) {
+    const data = JSON.parse(localStorage.getItem("mockData") || "{}");
+
+    // Κρατάμε μόνο entries του τρέχοντος μήνα
+    const newData = {};
+    for (const date in data) {
+      const [day, month, year] = date.split("/").map(Number);
+      if (month - 1 === currentMonth && year === currentYear) {
+        newData[date] = data[date];
+      }
+    }
+
+    localStorage.setItem("mockData", JSON.stringify(newData));
+    localStorage.setItem("lastLeaderboardReset", `${currentYear}-${currentMonth}`);
+    console.log("🧹 Μηδενίστηκαν τα δεδομένα leaderboard για νέο μήνα.");
+  }
+}
+// Βάλε αυτό ΚΑΠΟΥ ΜΙΑ ΦΟΡΑ πάνω από την populateLeaderboard
+let previousRanks = {};
+try {
+  previousRanks = JSON.parse(localStorage.getItem("previousRanks") || "{}");
+} catch(e){ previousRanks = {}; }
+
+// Προαιρετικά: map id->avatar URL. Αν δεν υπάρχει, θα φτιάξουμε initials avatar.
+// --- Avatars (εικόνες ή initials) ---
+const AVATAR_MAP = JSON.parse(localStorage.getItem("avatarMap") || "{}");
+
+function getRowsFromMonthlyMemory(limit = 8) {
+  const store = loadMonthly(); // { name: count }
+  const rows = Object.entries(store)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a,b) => (b.count - a.count) || a.name.localeCompare(b.name, "el"))
+    .slice(0, limit);
+  return rows;
+}
+// === Monthly memory (per browser) ===
+function monthKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2,'0');
+  return `xlb:month:${y}-${m}`;         // π.χ. xlb:month:2025-08
+}
+
+function loadMonthly() {
+  try { return JSON.parse(localStorage.getItem(monthKey()) || "{}"); }
+  catch { return {}; }
+}
+function saveMonthly(obj) {
+  localStorage.setItem(monthKey(), JSON.stringify(obj || {}));
+}
+
+// προαιρετικό όνομα-κλειδί (χρησιμοποιούμε name σαν key)
+function bumpMonthlyCount(name, step = 1) {
+  if (!name) return;
+  const store = loadMonthly();
+  const k = String(name).trim();
+  store[k] = (store[k] || 0) + step;
+  saveMonthly(store);
+}
+
+// === Αποφυγή διπλομετρήσεων την ίδια μέρα ===
+function processedKeyForToday() {
+  const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  return `xlb:processed:${today}`;
+}
+function loadProcessedToday() {
+  try { return new Set(JSON.parse(localStorage.getItem(processedKeyForToday()) || "[]")); }
+  catch { return new Set(); }
+}
+function saveProcessedToday(set) {
+  localStorage.setItem(processedKeyForToday(), JSON.stringify([...set]));
+}
+
+function makeInitialAvatarDataURI(fullName = "") {
+  const initials = (fullName || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0,2)
+    .map(s => s[0]?.toUpperCase() || "")
+    .join("");
+
+  // σταθερή απόχρωση ανά όνομα
+  let hash = 0;
+  for (let i = 0; i < fullName.length; i++) hash = (hash * 31 + fullName.charCodeAt(i)) | 0;
+  const hue = Math.abs(hash) % 360;
+
+  const svg = `
+    <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
+      <defs>
+        <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+          <stop offset='0%' stop-color='hsl(${hue}, 75%, 62%)'/>
+          <stop offset='100%' stop-color='hsl(${(hue+40)%360}, 85%, 58%)'/>
+        </linearGradient>
+      </defs>
+      <rect width='100%' height='100%' fill='url(#g)'/>
+      <text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle'
+            font-family='Poppins, Arial, sans-serif' font-size='56' fill='rgba(255,255,255,.95)'
+            style='paint-order: stroke; stroke: rgba(0,0,0,.25); stroke-width: 3px;'>
+        ${initials}
+      </text>
+    </svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+
+function getAvatarFor(id, name){
+  const url = AVATAR_MAP[id];
+  return url && typeof url === "string" ? url : makeInitialAvatarDataURI(name || "");
+}
+const CROWN_SVG = `
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#fff3c4"/>
+        <stop offset="60%" stop-color="#ffd166"/>
+        <stop offset="100%" stop-color="#caa03a"/>
+      </linearGradient>
+    </defs>
+    <path d="M8 46 L12 22 L24 34 L32 18 L40 34 L52 22 L56 46 Z" fill="url(#cg)"/>
+    <rect x="10" y="44" width="44" height="6" rx="3" fill="rgba(0,0,0,.15)"/>
+  </svg>`;
+// --- Premium medal SVGs (gold/silver/bronze) ---
+const MEDAL_HTML = {
+  gold:   `<img class="xlb-medal" src="https://i.postimg.cc/3wBJs6Py/c04dfc75-e5b5-4af8-962a-666bc2da3e2a-removalai-preview.png" alt="1st medal">`,
+  silver: `<img class="xlb-medal" src="https://i.postimg.cc/kGknNdtH/eea946d3-52a9-4678-b826-78cfbf35dcd0-removalai-preview.png" alt="2nd medal">`,
+  bronze: `<img class="xlb-medal" src="https://i.postimg.cc/P5btD9f6/363de7da-8d9d-4460-9bbf-22c80b24c04e-removalai-preview.png" alt="3rd medal">`,
+};
+function fitLeaderboardToViewport(slideEl){
+  const panel = slideEl.querySelector('.xlb-panel');
+  if (!panel) return;
+
+  // reset πριν μετρήσουμε
+  panel.style.transform = 'none';
+  panel.style.transformOrigin = 'center center';
+
+  // φυσικές (unscaled) διαστάσεις
+  const naturalH = panel.scrollHeight;
+  const naturalW = panel.scrollWidth;
+
+  // διαθέσιμο viewport
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+
+  // scale ώστε να χωράει ΚΑΙ σε ύψος ΚΑΙ σε πλάτος
+  const scaleH = vh / naturalH;
+  const scaleW = vw / naturalW;
+  const scale  = Math.min(scaleH, scaleW, 1); // ποτέ >1 για να μην “μεγαλώνει” θολά
+
+  panel.style.transform = `scale(${scale})`;
+  // κεντράρισμα γίνεται από .xlb-slide (flex center), δεν βάζουμε extra paddings εδώ
+}
+
+let unsubLeaderboard = null;
+
+function startRealtimeLeaderboard() {
+  console.log("[LB] attach listener");
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (unsubLeaderboard) { unsubLeaderboard(); unsubLeaderboard = null; }
+
+  const seen = loadProcessedToday(); // Set με doc IDs που μετρήθηκαν ήδη σήμερα
+
+  unsubLeaderboard = db.collection('xgym_scans')
+    .where('dateKey', '==', todayIso)
+    .onSnapshot((snap) => {
+      console.log("[LB] snapshot size:", snap.size);
+
+      let bumped = 0;
+      snap.docs.forEach(d => {
+        const id = d.id;
+        if (seen.has(id)) return; // ήδη μετρημένο
+        const data = d.data() || {};
+        const name = String(data.name || '').trim();
+        if (!name) return;
+
+        // bump μηνιαία μνήμη
+        bumpMonthlyCount(name, 1);
+        seen.add(id);
+        bumped++;
+      });
+      if (bumped > 0) saveProcessedToday(seen);
+
+      // ΤΩΡΑ: render από τη μνήμη του μήνα (όχι από το snapshot)
+      const rows = getRowsFromMonthlyMemory(8);
+      renderLeaderboardFromRows(rows);
+
+    }, (err) => console.error('[LB] Firestore listener error:', err));
+}
+function renderLeaderboardFromRows(rows){
+  const sc = document.querySelector(".slideshow-container");
+  if (!sc) { console.error("[LB] .slideshow-container ΔΕΝ βρέθηκε!"); return; }
+
+  // Παλιά leaderboard slide + κατάστασή της
+  const oldSlide = sc.querySelector(".leaderboard-slide");
+  const wasActive = !!oldSlide && oldSlide.classList.contains("active");
+  const oldIndex = oldSlide ? Array.from(sc.children).indexOf(oldSlide) : -1;
+rows = rows.slice(0, 8); // Κρατά μόνο τους πρώτους 8
+  // Αν ΔΕΝ υπάρχουν rows, δείξε placeholder στην ίδια θέση
+  if (!rows || !rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "slide leaderboard-slide xlb-slide";
+    empty.innerHTML = `
+      <div class="xlb-panel">
+        <div class="xlb-head">
+          <div class="xlb-kicker">ΜΗΝΙΑΙΟ • TOP 10 ΣΕ ΠΡΟΠΟΝΗΣΕΙΣ</div>
+          <div class="xlb-title">Leaderboard</div>
+          <div class="xlb-underline"></div>
+        </div>
+        <div class="xlb-list">
+          <div style="padding:24px;opacity:.75;text-align:center;">Δεν υπάρχουν καταγραφές για σήμερα.</div>
+        </div>
+      </div>`;
+    if (oldIndex >= 0) {
+      sc.insertBefore(empty, sc.children[oldIndex]);
+      oldSlide.remove();
+    } else {
+      sc.appendChild(empty);
+    }
+    // ανανέωσε slides & active
+    slides = document.querySelectorAll('.slide');
+    if (wasActive) {
+      slides.forEach(s => s.classList.remove('active'));
+      empty.classList.add('active');
+      currentSlide = oldIndex >= 0 ? oldIndex : Array.from(slides).indexOf(empty);
+    }
+    fitLeaderboardToViewport(empty);
+    return;
+  }
+
+  // --- Χτίσε το νέο "πλούσιο" slide όπως πριν ---
+  const maxCount = Math.max(...rows.map(r => r.count));
+  const newSlide = document.createElement("div");
+  newSlide.className = "slide leaderboard-slide xlb-slide";
+
+  const rowsHTML = rows.map((r, i) => {
+    const rank = i + 1;
+    const medalClass = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+    const isMedal = i < 3;
+    const pct = maxCount ? Math.round((r.count / maxCount) * 100) : 0;
+
+    const idKey = r.name;
+    const prevRanks = JSON.parse(localStorage.getItem("previousRanks") || "{}");
+    const deltaMemory = JSON.parse(localStorage.getItem("deltaMemory") || "{}");
+
+    let delta = 0, deltaClass = "same", deltaText = "–";
+    if (prevRanks[idKey] !== undefined) {
+      delta = prevRanks[idKey] - i;
+      if (delta > 0) { deltaClass = "up"; deltaText = "⇧"+delta; }
+      else if (delta < 0) { deltaClass = "down"; deltaText = "⇩"+Math.abs(delta); }
+    }
+    if (delta === 0 && deltaMemory[idKey]) {
+      const mem = deltaMemory[idKey];
+      deltaClass = mem.dir === "up" ? "up" : mem.dir === "down" ? "down" : "same";
+      deltaText  = mem.dir === "up" ? "⇧"+(mem.step||1)
+                 : mem.dir === "down" ? "⇩"+(mem.step||1) : "–";
+    } else if (delta !== 0) {
+      deltaMemory[idKey] = { dir: delta>0 ? "up":"down", step: Math.abs(delta) };
+    }
+
+    const avatarUrl = getAvatarFor(idKey, r.name);
+    const rankCell  = isMedal
+      ? `<div class="xlb-rank">${MEDAL_HTML[medalClass]}</div>`
+      : `<div class="xlb-rank">${rank}</div>`;
+
+    const countCell = i === 0
+      ? `<div class="xlb-count crown-wrapper">
+           <span class="xlb-crown" aria-hidden="true">${(typeof CROWN_SVG === "string") ? CROWN_SVG : ""}</span>
+           <span class="xlb-count-number">${r.count}</span>
+         </div>`
+      : `<div class="xlb-count">${r.count}</div>`;
+
+    const extraFirst = i === 0 ? "xlb-first" : "";
+    const rankAnimClass = delta > 0 ? "rank-up" : "";
+
+    return `
+      <div class="xlb-item ${extraFirst} ${isMedal ? "medal " + medalClass : ""} ${rankAnimClass}"
+           data-rank="${rank}" style="--pct:${pct}">
+        ${rankCell}
+        <div class="xlb-avatar"><img src="${avatarUrl}" alt="avatar"></div>
+        <div class="xlb-name">
+          <span class="xlb-name-text">${r.name}</span>
+          <span class="xlb-delta ${deltaClass}">${deltaText}</span>
+        </div>
+        ${countCell}
+      </div>`;
+  }).join("");
+
+  newSlide.innerHTML = `
+    <div class="xlb-panel">
+      <div class="xlb-corners" aria-hidden="true">
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+      </div>
+      <div class="xlb-head">
+        <div class="xlb-kicker">ΜΗΝΙΑΙΟ • TOP 8 σε προπονήσεις</div>
+        <div class="xlb-title-row">
+          <div class="xlb-logo"><img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo left"></div>
+          <div class="xlb-title">Leaderboard</div>
+          <div class="xlb-logo"><img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo right"></div>
+        </div>
+        <div class="xlb-underline"></div>
+      </div>
+      <div class="xlb-list">${rowsHTML}</div>
+    </div>
+  `;
+
+  // ➜ Βάλε τη νέα slide στην ίδια θέση με την παλιά (αν υπήρχε)
+  if (oldIndex >= 0) {
+    sc.insertBefore(newSlide, sc.children[oldIndex]);
+    oldSlide.remove();
+  } else {
+    sc.appendChild(newSlide);
+  }
+
+  // ➜ Ανανεώσε το NodeList και το active
+  slides = document.querySelectorAll('.slide');
+  if (wasActive) {
+    slides.forEach(s => s.classList.remove('active'));
+    newSlide.classList.add('active');
+    currentSlide = oldIndex >= 0 ? oldIndex : Array.from(slides).indexOf(newSlide);
+  }
+
+  // ➜ ΕΝΕΡΓΟΠΟΙΗΣΗ ROWS (animation + ορατότητα)
+requestAnimationFrame(() => {
+  const items = newSlide.querySelectorAll(".xlb-item");
+  items.forEach((row, idx) => {
+    row.style.setProperty("--d", `${idx * 70}ms`);
+    row.classList.add("in");            // ⬅️ Χωρίς αυτό μένουν “αόρατα”
+  });
+  if (typeof retriggerRankAnims === "function") retriggerRankAnims(newSlide);
+});
+
+  // fit + anims
+  fitLeaderboardToViewport(newSlide);
+  requestAnimationFrame(()=>fitLeaderboardToViewport(newSlide));
+  setTimeout(()=>fitLeaderboardToViewport(newSlide), 300);
+  setTimeout(()=>fitLeaderboardToViewport(newSlide), 800);
+
+  newSlide.querySelectorAll('img').forEach(img=>{
+    if(!img.complete){ img.addEventListener('load', ()=>fitLeaderboardToViewport(newSlide), {once:true}); }
+  });
+
+  // persist ranks για επόμενο render
+  const newRanks = {};
+  rows.forEach((r, i) => { newRanks[r.name] = i; });
+  localStorage.setItem("previousRanks", JSON.stringify(newRanks));
+}
+
+function populateLeaderboard() {
+  // 1) Καθάρισε παλιό slide
+  const old = document.querySelector(".leaderboard-slide");
+  if (old) old.remove();
+
+  // 2) Δεδομένα & ταξινόμηση
+  const counts = getMonthlyCounts();
+  const sorted = Object.entries(counts)
+    .sort((a, b) => (b[1].count - a[1].count) || a[1].name.localeCompare(b[1].name, "el"))
+    .slice(0, 10);
+
+  // 3) previousRanks & deltaMemory (χωρίς refresh)
+  const lsPrev = JSON.parse(localStorage.getItem("previousRanks") || "{}");
+  const prevRanksRaw = (typeof window.previousRanks === "object" && window.previousRanks) ? window.previousRanks : lsPrev;
+  const prevRanks = {};
+  Object.keys(prevRanksRaw).forEach(k => { prevRanks[String(k)] = prevRanksRaw[k]; });
+
+  const deltaMemoryRaw = JSON.parse(localStorage.getItem("deltaMemory") || "{}");
+  const deltaMemory = {};
+  Object.keys(deltaMemoryRaw).forEach(k => { deltaMemory[String(k)] = deltaMemoryRaw[k]; });
+
+  // 4) Νέες θέσεις
+  const newRanks = {};
+  sorted.forEach(([id], i) => { newRanks[String(id)] = i; });
+
+  // 5) Max για progress
+  const maxCount = sorted.length ? Math.max(...sorted.map(([_, v]) => v.count)) : 1;
+
+  // 6) Slide wrapper
+  const slide = document.createElement("div");
+  slide.className = "slide leaderboard-slide xlb-slide";
+
+  // 7) Rows
+  const rowsHTML = sorted.map(([id, info], i) => {
+    const idKey = String(id);
+    const rank = i + 1;
+    const medalClass = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+    const isMedal = i < 3;
+    const pct = maxCount ? Math.round((info.count / maxCount) * 100) : 0;
+
+    // Δείκτες ανόδου/πτώσης
+    let delta = 0, deltaClass = "same", deltaText = "–";
+    if (prevRanks[idKey] !== undefined) {
+      delta = prevRanks[idKey] - newRanks[idKey]; // >0 = ανέβηκε
+      if (delta > 0) { deltaClass = "up";   deltaText = "⇧" + delta; }
+      else if (delta < 0) { deltaClass = "down"; deltaText = "⇩" + Math.abs(delta); }
+    }
+
+    // Μνήμη για να μένει το βελάκι μέχρι την επόμενη αλλαγή
+    if (delta === 0) {
+      const mem = deltaMemory[idKey];
+      if (mem && mem.dir) {
+        deltaClass = mem.dir === "up" ? "up" : mem.dir === "down" ? "down" : "same";
+        deltaText  = mem.dir === "up" ? "⇧" + (mem.step || 1)
+                   : mem.dir === "down" ? "⇩" + (mem.step || 1)
+                   : "–";
+      }
+    } else {
+      deltaMemory[idKey] = { dir: delta > 0 ? "up" : "down", step: Math.abs(delta) };
+    }
+
+    const avatarUrl = getAvatarFor(idKey, info.name);
+ const rankCell  = isMedal
+  ? `<div class="xlb-rank">${MEDAL_HTML[medalClass]}</div>`
+  : `<div class="xlb-rank">${rank}</div>`;
+
+    // Κορόνα πάνω από το count ΜΟΝΟ για τον πρώτο
+    const countCell = i === 0
+      ? `<div class="xlb-count crown-wrapper">
+           <span class="xlb-crown" aria-hidden="true">${(typeof CROWN_SVG === "string") ? CROWN_SVG : ""}</span>
+           <span class="xlb-count-number">${info.count}</span>
+         </div>`
+      : `<div class="xlb-count">${info.count}</div>`;
+
+    const extraFirst = i === 0 ? "xlb-first" : "";
+    const rankAnimClass = delta > 0 ? "rank-up" : "";
+
+    return `
+      <div class="xlb-item ${extraFirst} ${isMedal ? "medal " + medalClass : ""} ${rankAnimClass}"
+           data-rank="${rank}" style="--pct:${pct}">
+        ${rankCell}
+        <div class="xlb-avatar"><img src="${avatarUrl}" alt="avatar"></div>
+        <div class="xlb-name">
+          <span class="xlb-name-text">${info.name}</span>
+          <span class="xlb-delta ${deltaClass}">${deltaText}</span>
+        </div>
+        ${countCell}
+      </div>
+    `;
+  }).join("");
+
+  // 8) Panel
+slide.innerHTML = `
+  <div class="xlb-panel">
+    <div class="xlb-corners" aria-hidden="true">
+      <span class="c tl"></span>
+      <span class="c tr"></span>
+      <span class="c bl"></span>
+      <span class="c br"></span>
+    </div>
+
+    <div class="xlb-head">
+      <div class="xlb-kicker">MONTHLY • TOP 10 σε προπονήσεις</div>
+      <div class="xlb-title-row">
+        <div class="xlb-logo">
+          <img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo left">
+        </div>
+        <div class="xlb-title">Leaderboard</div>
+        <div class="xlb-logo">
+          <img src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png" alt="logo right">
+        </div>
+      </div>
+      <div class="xlb-underline"></div>
+    </div>
+
+    <!-- ΝΕΟ: επικεφαλίδα στηλών -->
+    <div class="xlb-table-head">
+      <div class="col-rank">ΚΑΤΑΤΑΞΗ</div>
+      <div class="col-avatar"></div>
+      <div class="col-name"></div>
+      <div class="col-count">ΠΡΟΠΟΝΗΣΕΙΣ</div>
+    </div>
+
+    <div class="xlb-list">${rowsHTML}</div>
+  </div>
+`;
+
+  // 9) Mount
+  document.querySelector(".slideshow-container").appendChild(slide);
+
+  // 9a) Fit: αρχικό + επαναληπτικά (για stagger, avatars, webfonts)
+  fitLeaderboardToViewport(slide);
+  requestAnimationFrame(() => fitLeaderboardToViewport(slide));
+  setTimeout(() => fitLeaderboardToViewport(slide), 300);
+  setTimeout(() => fitLeaderboardToViewport(slide), 800);
+
+  // Refit όταν φορτώσουν οι εικόνες (avatars)
+  slide.querySelectorAll('img').forEach(img => {
+    if (!img.complete) {
+      img.addEventListener('load', () => fitLeaderboardToViewport(slide), { once:true });
+    }
+  });
+
+  // Refit σε πραγματικές αλλαγές ύψους (animations/deltas κλπ)
+  const ro = new ResizeObserver(() => fitLeaderboardToViewport(slide));
+  const panelEl = slide.querySelector('.xlb-panel');
+  if (panelEl) ro.observe(panelEl);
+
+  // Refit αν αλλάξει το μέγεθος παραθύρου/TV
+  const onResizeFit = () => fitLeaderboardToViewport(slide);
+  window.addEventListener('resize', onResizeFit, { passive: true });
+
+  // 10) Είσοδος + retrigger rank anims
+  requestAnimationFrame(() => {
+    const items = slide.querySelectorAll(".xlb-item");
+    void slide.offsetHeight; // force reflow
+    items.forEach((row, idx) => {
+      row.style.setProperty("--d", `${idx * 70}ms`);
+      row.classList.add("in");
+    });
+    if (typeof retriggerRankAnims === "function") retriggerRankAnims(slide);
+  });
+
+  // 11) Persist
+  Promise.resolve().then(() => {
+    window.previousRanks = newRanks;
+    localStorage.setItem("previousRanks", JSON.stringify(newRanks));
+    localStorage.setItem("deltaMemory", JSON.stringify(deltaMemory));
+  });
+}
+// === Instant loading overlay ===
+function showLoadingPopup() {
+  let el = document.getElementById("popup-loading");
+  if (el) return el; // μην το ξαναστήνεις
+
+  el = document.createElement("div");
+  el.id = "popup-loading";
+  el.innerHTML = `
+    <div class="loading-card">
+      <div class="loading-inner">
+
+        <!-- 👇 ΚΥΚΛΙΚΟ LOGO ΜΕ ANIMATION -->
+        <div class="holo-logo">
+          <img
+            src="https://i.postimg.cc/Y9HZXm3q/f26ceef4-3445-4c9a-a15d-64ea3cac2a95-removalai-preview.png"  /* βάλε σωστό path */
+            alt="Lion logo"
+            width="200" height="200"
+            decoding="async" loading="eager"
+          />
+        </div>
+
+        <div class="loading-title">
+  Έλεγχος συνδρομής
+</div>
+        <div class="loading-sub">Παρακαλώ περιμένετε</div>
+        <div class="loading-progress">
+          <div class="loading-bar"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
+function hideLoadingPopup() {
+  const el = document.getElementById("popup-loading");
+  if (!el) return;
+  el.classList.add("hide");
+  setTimeout(() => el.remove(), 300);
+}
+
+    // Subscription check
+    // Subscription check
+async function checkSubscriptionForId(scannedId) {
+  if (!scannedId) return;
+
+  const loading = showLoadingPopup();
+
+  try {
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
+      { cache: "no-store" }
+    );
+
+    const data = await response.json();
+    hideLoadingPopup();
+
+    // ΠΑΝΤΑ από Sheet
+    const sheetName = String(data.name || "").trim();
+    const firstOnly = sheetName.split(/\s+/)[0] || "";
+    const displayedName = formatName(firstOnly); // ή βάλε κατευθείαν firstOnly αν δεν θες vocative
+
+    showPopup(displayedName, !!data.active);
+  } catch (error) {
+    console.error("❌ Σφάλμα κατά το fetch:", error);
+    hideLoadingPopup();
+    showPopup("⚠️ Σφάλμα", false);
+  }
+}
+
+function updateClock() {
+  const now = new Date();
+  let hours = now.getHours();           // ✅ 24ωρο, χωρίς μετατροπή
+  const minutes = now.getMinutes();
+
+  const hoursStr = hours.toString().padStart(2, "0");
+  const minutesStr = minutes.toString().padStart(2, "0");
+
+  const time = `${hoursStr}:${minutesStr}`;  // ✅ Χωρίς AM/PM
+  document.getElementById("digitalClock").textContent = time;
+}
+
+setInterval(updateClock, 10000); // ανανέωση κάθε 10 δευτερόλεπτα
+updateClock(); // αρχική εμφάνιση
+
+
+  </script>
+</body>
+</html>
