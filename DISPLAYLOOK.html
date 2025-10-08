@@ -642,10 +642,6 @@ function todayEL() {
   text-overflow: ellipsis;
 }
 /* ΜΟΝΟ για τον 1ο */
-.xlb-item[data-rank="1"] .xlb-name {
-  font-size: clamp(45px, 4.4vh, 55px); /* ↑ αυξάνεις εδώ το μέγεθος */
-  font-weight: 700;                    /* πιο έντονο αν θέλεις */
-}
 
 /* avatar bubble */
 .xlb-avatar{
@@ -777,8 +773,6 @@ function todayEL() {
   padding: clamp(6px, 1.2vh, 16px) clamp(10px, 2vw, 24px) clamp(8px, 1.6vh, 18px);
   overflow: hidden;
 }
-/* extra “ανάσα” μόνο κάτω από τον 1ο */
-.xlb-item[data-rank="1"]{ margin-bottom: clamp(6px, 1vh, 14px); }
 /* το πρώτο row να μη “κολλάει” πάνω */
 .xlb-item:first-child{
   margin-top: 0.6rem;
@@ -796,18 +790,6 @@ function todayEL() {
   position: relative;
 }
 
-/* λίγο μεγαλύτερα αλλά χωρίς να “πέφτουν” – κέντρο πάντα */
-.xlb-item[data-rank="1"] .xlb-rank{
-  transform: scale(1.05);
-  transform-origin: center center;
-}
-.xlb-item[data-rank="1"] .xlb-avatar{
-  transform: scale(1.04);
-  transform-origin: center center;
-}
-/* πιο έντονη progress-bar μόνο για τον 1ο */
-
-
 /* λεπτή neon μπάρα στην αριστερή άκρη */
 .xlb-item[data-rank="1"]::before{
   content:"";
@@ -818,9 +800,6 @@ function todayEL() {
   opacity:.95;
 }
 
-/* λίγο “μεγαλύτεροι” οι badge/avatars για τον 1ο */
-.xlb-item[data-rank="1"] .xlb-rank{ transform: scale(1.08); }
-.xlb-item[data-rank="1"] .xlb-avatar{ transform: scale(1.05); }
 
 /* πιο premium counter chip */
 .xlb-item[data-rank="1"] .xlb-count{
@@ -1105,13 +1084,14 @@ align-self: center;          /* κάθετα στο grid row */
   display: flex;
   flex-direction: column;      /* κορώνα πάνω, αριθμός κάτω */
   align-items: center;
-  gap: clamp(1px, .1vh, 1px);
 
   /* ΑΚΡΙΒΩΣ όπως .xlb-count */
   padding: clamp(1px, 0vh, 1px) clamp(4px, .8vw, 9px);
   min-width: clamp(56px, 8vh, 120px);
   border-radius: 18px;
   background: rgba(255,255,255,.08);
+    gap: clamp(1px, .1vh, 1px);
+
 
   /* Χρυσό περίγραμμα (όχι glow) */
   border: 1px solid rgba(255, 209, 102, .65);
@@ -1130,7 +1110,10 @@ align-self: center;          /* κάθετα στο grid row */
   font-size: clamp(30px, 2.6vh, 40px);
   line-height: 1;
 }
-
+/* Αφαίρεση της κορώνας από τον 1ο */
+.xlb-item[data-rank="1"] .xlb-rank::after {
+  content: none !important;
+}
   </style>
 </head>
 <body>
@@ -1591,12 +1574,7 @@ rows = rows.slice(0, 8); // Κρατά μόνο τους πρώτους 8
       ? `<div class="xlb-rank">${MEDAL_HTML[medalClass]}</div>`
       : `<div class="xlb-rank">${rank}</div>`;
 
-    const countCell = i === 0
-      ? `<div class="xlb-count crown-wrapper">
-           <span class="xlb-crown" aria-hidden="true">${(typeof CROWN_SVG === "string") ? CROWN_SVG : ""}</span>
-           <span class="xlb-count-number">${r.count}</span>
-         </div>`
-      : `<div class="xlb-count">${r.count}</div>`;
+const countCell = `<div class="xlb-count">${r.count}</div>`;
 
     const extraFirst = i === 0 ? "xlb-first" : "";
     const rankAnimClass = delta > 0 ? "rank-up" : "";
@@ -1741,12 +1719,8 @@ function populateLeaderboard() {
   : `<div class="xlb-rank">${rank}</div>`;
 
     // Κορόνα πάνω από το count ΜΟΝΟ για τον πρώτο
-    const countCell = i === 0
-      ? `<div class="xlb-count crown-wrapper">
-           <span class="xlb-crown" aria-hidden="true">${(typeof CROWN_SVG === "string") ? CROWN_SVG : ""}</span>
-           <span class="xlb-count-number">${info.count}</span>
-         </div>`
-      : `<div class="xlb-count">${info.count}</div>`;
+  // Ο πρώτος εμφανίζει count κανονικά — χωρίς κορόνα
+const countCell = `<div class="xlb-count">${info.count}</div>`;
 
     const extraFirst = i === 0 ? "xlb-first" : "";
     const rankAnimClass = delta > 0 ? "rank-up" : "";
