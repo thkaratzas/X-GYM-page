@@ -1235,12 +1235,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return name;
     }
 
-    // Show popup
-function formatName(name) {
-  // Μετατρέπει το πρώτο γράμμα σε κεφαλαίο και τα υπόλοιπα σε πεζά
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-}
-
 function showPopup(name, isActive) {
   // Καλημέρα / Καλησπέρα με βάση την ώρα
   const hour = new Date().getHours();
