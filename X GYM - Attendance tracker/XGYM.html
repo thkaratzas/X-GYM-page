@@ -1538,6 +1538,8 @@ body {
 <script>
 /* === Storage key unification */
 const STORAGE_KEY = "attendanceData";
+// Χρήση τρέχοντος έτους αντί για στατικό 2025
+const CURRENT_YEAR = new Date().getFullYear();
 
 let mockData;
 try {
@@ -2121,6 +2123,15 @@ document.getElementById("clearYearBtn").addEventListener("click", () => {
     document.getElementById("secondChartReturningRate").textContent = "0";
     document.getElementById("secondChartAvgVisitsPerId").textContent = "0";
 
+    // Αφαίρεση τυχόν σημαίας "lastClearDate" ώστε τα δεδομένα από το Google Sheet
+    // να μπορούν να επαναφορτωθούν κανονικά μετά τον καθαρισμό.
+    localStorage.removeItem("lastClearDate");
+
+    // Προσπαθούμε να ξαναφορτώσουμε τα δεδομένα από το Apps Script (αν υπάρχει η συνάρτηση)
+    if (typeof loadDailyIncome === "function") {
+      try { loadDailyIncome(); } catch (e) { console.error("loadDailyIncome failed", e); }
+    }
+
     alert("Όλα τα δεδομένα του έτους έχουν καθαριστεί!");
   }
 });
@@ -2678,7 +2689,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let month = 1; month <= 12; month++) {
       const monthData = Object.entries(mockData).filter(([dateStr]) => {
         const [d, m, y] = dateStr.split("/").map(Number);
-        return m === month && y === 2025;
+        return m === month && y === CURRENT_YEAR;
       });
 
       if (monthData.length === 0) continue;
@@ -2720,7 +2731,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const returningRate = idCount ? Math.round((returning / idCount) * 100) : 0;
       const bestWeekIndex = weeklyIncome.findIndex(v => v === Math.max(...weeklyIncome));
       const bestWeekValue = weeklyIncome[bestWeekIndex].toFixed(2);
-      const monthName = new Date(2025, month - 1).toLocaleString("el-GR", { month: "long" });
+      const monthName = new Date(CURRENT_YEAR, month - 1).toLocaleString("el-GR", { month: "long" });
 
       yearlyIncome += totalIncome;
 
@@ -2742,7 +2753,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let allYearIds = new Set();
     for (const dateStr in mockData) {
       const [d, m, y] = dateStr.split("/").map(Number);
-      if (y === 2025) {
+      if (y === CURRENT_YEAR) {
         mockData[dateStr].forEach(e => {
           if (e.type !== "income" && e.id) {
             allYearIds.add(e.id);
@@ -2925,7 +2936,7 @@ function updateMonthlyChartFromData(monthInput) {
     const m = parseInt(monthStr);
     const y = parseInt(yearStr);
 
-    if (m === selectedMonth && y === 2025) {
+    if (m === selectedMonth && y === CURRENT_YEAR) {
       console.log("✅ Μέρα που περιλαμβάνεται:", dateStr);
       let weekIndex = -1;
       if (day >= 1 && day <= 7) weekIndex = 0;
@@ -2969,7 +2980,7 @@ function updateMonthlyChartFromData(monthInput) {
     const m = parseInt(monthStr);
     const y = parseInt(yearStr);
 
-    if (m === prevMonth && y === 2025) {
+    if (m === prevMonth && y === CURRENT_YEAR) {
       const entries = mockData[dateStr];
       entries.forEach(entry => {
         if (entry.type === "income") {
@@ -3007,7 +3018,7 @@ function updateMonthlyChartFromData(monthInput) {
     const m = parseInt(mStr) - 1;
     const y = parseInt(yStr);
 
-    if (y === 2025) {
+    if (y === CURRENT_YEAR) {
       const entries = mockData[dateStr];
       entries.forEach(entry => {
         if (entry.type === "income") {
@@ -3089,7 +3100,7 @@ function drawSecondChart(month) {
     const m = parseInt(monthStr);
     const y = parseInt(yearStr);
 
-    if (m === parseInt(month) && y === 2025) {
+    if (m === parseInt(month) && y === CURRENT_YEAR) {
       let weekIndex = -1;
       if (day <= 7) weekIndex = 0;
       else if (day <= 14) weekIndex = 1;
@@ -3228,15 +3239,15 @@ function updateSecondChartTotals(monthNumber) {
     const m = parseInt(mStr, 10);
     const y = parseInt(yStr, 10);
 
-    if (m === monthNumber && y === 2025) {
+    if (m === monthNumber && y === CURRENT_YEAR) {
       // ✅ Μετράμε μόνο ΚΑΤΑΓΡΑΦΕΣ (ΟΧΙ πληρωμές)
       const dayEntries = (mockData[dateStr] || []).filter(e => e.type !== 'income');
       totalEntries += dayEntries.length;
       dayEntries.forEach(e => allUniqueIds.add(e.id));
     }
   }
-    // ✅ Ετήσιοι Πελάτες (unique IDs όλου του 2025)
-  const year = 2025;
+    // ✅ Ετήσιοι Πελάτες (unique IDs όλου του έτους)
+    const year = CURRENT_YEAR;
   const yearlyUniqueIds = new Set();
 
   for (const dateStr in mockData) {
@@ -3268,7 +3279,7 @@ for (let month = 1; month <= 12; month++) {
     const m = parseInt(mStr, 10);
     const y = parseInt(yStr, 10);
 
-    if (m === month && y === 2025) {
+    if (m === month && y === CURRENT_YEAR) {
       const entries = (mockData[dateStr] || []).filter(e => e.type !== 'income');
       monthTotal += entries.length;
       entries.forEach(e => monthUniqueIds.add(e.id));
@@ -3299,7 +3310,7 @@ let femaleCount = 0;
 
 for (const dateStr in mockData) {
   const [day, month, year] = dateStr.split("/").map(x => parseInt(x));
-  if (month === monthNumber && year === 2025) {
+  if (month === monthNumber && year === CURRENT_YEAR) {
     const entries = mockData[dateStr] || [];
     entries.forEach(entry => {
       if (entry.type === "income") return;
@@ -3317,7 +3328,7 @@ for (const dateStr in mockData) {
   const m = parseInt(mStr, 10);
   const y = parseInt(yStr, 10);
 
-  if (m === monthNumber && y === 2025) {
+  if (m === monthNumber && y === CURRENT_YEAR) {
     const entries = (mockData[dateStr] || []).filter(e => e.type !== 'income');
     entries.forEach(entry => {
       const id = entry.id;
