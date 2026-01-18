@@ -1209,6 +1209,172 @@ body {
   font-weight: bold;
 }
 
+/* 🔐 Password Modal Styles */
+.password-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.password-modal-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+
+.password-modal-container {
+  background: rgba(20, 20, 20, 0.95);
+  border: 2px solid rgba(0, 200, 255, 0.5);
+  border-radius: 20px;
+  padding: 48px 40px;
+  box-shadow: 0 0 40px rgba(0, 200, 255, 0.3), 0 0 80px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  animation: modalScaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.password-modal-container h2 {
+  color: #00c8ff;
+  font-size: 28px;
+  margin: 0 0 24px 0;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+  font-weight: 600;
+}
+
+.password-modal-container p {
+  color: #ccc;
+  font-size: 14px;
+  margin: 0 0 28px 0;
+  opacity: 0.8;
+}
+
+.password-input-wrapper {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.password-digit {
+  width: 60px;
+  height: 70px;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.1), rgba(0, 200, 255, 0.05));
+  border: 2px solid rgba(0, 200, 255, 0.3);
+  border-radius: 12px;
+  color: #00c8ff;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: text;
+  box-shadow: inset 0 0 10px rgba(0, 200, 255, 0.1);
+}
+
+.password-digit.filled {
+  border-color: rgba(0, 200, 255, 0.8);
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.2), rgba(0, 200, 255, 0.1));
+  box-shadow: inset 0 0 10px rgba(0, 200, 255, 0.2), 0 0 15px rgba(0, 200, 255, 0.3);
+}
+
+.password-digit:focus {
+  outline: none;
+  border-color: #00c8ff;
+  background: linear-gradient(135deg, rgba(0, 200, 255, 0.25), rgba(0, 200, 255, 0.15));
+  box-shadow: inset 0 0 15px rgba(0, 200, 255, 0.25), 0 0 20px rgba(0, 200, 255, 0.4);
+}
+
+.password-digit.error {
+  border-color: #ff4081;
+  background: linear-gradient(135deg, rgba(255, 64, 129, 0.15), rgba(255, 64, 129, 0.05));
+  animation: shakeInput 0.5s ease;
+}
+
+@keyframes shakeInput {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+.password-submit-btn {
+  width: 100%;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00c8ff, #00f9ff);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 200, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.password-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 200, 255, 0.6);
+}
+
+.password-submit-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 200, 255, 0.4);
+}
+
+.password-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.password-error-message {
+  display: none;
+  color: #ff4081;
+  font-size: 14px;
+  margin-top: 16px;
+  animation: fadeIn 0.3s ease;
+  text-shadow: 0 0 8px rgba(255, 64, 129, 0.3);
+}
+
+.password-error-message.show {
+  display: block;
+}
+
+/* Blur effect for content behind modal */
+.password-modal-overlay.active ~ * {
+  filter: blur(5px);
+}
+
+.blurred-content {
+  filter: blur(5px) !important;
+  pointer-events: none;
+}
 
     
   </style>
@@ -1420,7 +1586,7 @@ body {
     <h2 id="todayTitle">Σήμερα</h2>
     <div id="todayLog"></div>
   </div>
-  <div class="content" class="content page"id="dayLogView" style="display: none;">
+  <div id="dayLogView" style="display: none;">
   <button id="backToWeeksBtn" style="position: absolute; top: 20px; left: 20px; font-size: 24px; background: none; border: none; color: white; cursor: pointer;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40" fill="white">
     <path d="M13.59 6.59L8 12l5.59 5.59L12 19l-7-7 7-7 1.59 1.59z"/>
   </svg>
@@ -1435,6 +1601,24 @@ body {
   </thead>
   <tbody id="dayLogTableBody" style="text-align: center;"></tbody>
 </table>
+</div>
+
+<!-- 🔐 Password Modal for Statistics Pages -->
+<div id="passwordModalOverlay" class="password-modal-overlay">
+  <div class="password-modal-container">
+    <h2>🔐 Κωδικός Πρόσβασης</h2>
+    <p>Εισάγετε τον 4-ψήφιο κωδικό για πρόσβαση στα στατιστικά</p>
+    
+    <div class="password-input-wrapper">
+      <input type="text" class="password-digit" data-index="0" inputmode="numeric" maxlength="1" placeholder="•" />
+      <input type="text" class="password-digit" data-index="1" inputmode="numeric" maxlength="1" placeholder="•" />
+      <input type="text" class="password-digit" data-index="2" inputmode="numeric" maxlength="1" placeholder="•" />
+      <input type="text" class="password-digit" data-index="3" inputmode="numeric" maxlength="1" placeholder="•" />
+    </div>
+    
+    <button class="password-submit-btn" id="passwordSubmitBtn">Είσοδος</button>
+    <div class="password-error-message" id="passwordErrorMessage">❌ Εσφαλμένος κωδικός. Δοκιμάστε ξανά.</div>
+  </div>
 </div>
 </body>
 
@@ -3391,6 +3575,346 @@ document.getElementById("secondChartFemaleCount").textContent = femaleCount;
     homeBtn.addEventListener('click', () => {
       setTimeout(updateOverlay, 100);
     });
+  }
+
+  // 🔐 ======================== PASSWORD PROTECTION LOGIC ========================
+  const PASSWORD = "1234"; // Ο κωδικός πρόσβασης
+  let passwordVerified = false; // Κατάσταση επαλήθευσης
+  const passwordDigits = document.querySelectorAll('.password-digit');
+  const passwordModalOverlay = document.getElementById('passwordModalOverlay');
+  const passwordSubmitBtn = document.getElementById('passwordSubmitBtn');
+  const passwordErrorMessage = document.getElementById('passwordErrorMessage');
+  
+  // Σημα για αποφυγή διπλής εμφάνισης του modal
+  let modalAlreadyShown = false;
+  
+  // Store which button triggered the password modal
+  let pendingStatsButton = null;
+
+  // Handle password digit inputs
+  passwordDigits.forEach((input, index) => {
+    input.addEventListener('input', (e) => {
+      const value = e.target.value;
+      
+      // Only allow numbers
+      if (!/^\d?$/.test(value)) {
+        e.target.value = '';
+        return;
+      }
+
+      // Move to next input if digit entered
+      if (value && index < passwordDigits.length - 1) {
+        passwordDigits[index + 1].focus();
+      }
+
+      // Update visual state
+      if (value) {
+        e.target.classList.add('filled');
+        e.target.style.color = 'transparent'; // Hide the digit (•)
+      } else {
+        e.target.classList.remove('filled');
+        e.target.style.color = '#00c8ff';
+      }
+
+      // Remove error state when user types
+      passwordErrorMessage.classList.remove('show');
+      passwordDigits.forEach(d => d.classList.remove('error'));
+    });
+
+    // Handle backspace
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && index > 0) {
+        passwordDigits[index - 1].focus();
+      }
+      
+      // Allow Enter to submit
+      if (e.key === 'Enter') {
+        checkPassword();
+      }
+    });
+
+    // Paste support
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      const numbers = pastedText.replace(/\D/g, '').slice(0, 4);
+      
+      numbers.split('').forEach((num, i) => {
+        if (i < passwordDigits.length) {
+          passwordDigits[i].value = num;
+          passwordDigits[i].classList.add('filled');
+          passwordDigits[i].style.color = 'transparent';
+        }
+      });
+
+      if (numbers.length === 4) {
+        checkPassword();
+      }
+    });
+  });
+
+  // Submit button click
+  passwordSubmitBtn?.addEventListener('click', checkPassword);
+
+  function checkPassword() {
+    const enteredPassword = Array.from(passwordDigits)
+      .map(input => input.value)
+      .join('');
+
+    if (enteredPassword.length !== 4) {
+      showPasswordError();
+      return;
+    }
+
+    if (enteredPassword === PASSWORD) {
+      // ✅ Password correct
+      passwordVerified = true;
+      hidePasswordModal();
+      
+      // Trigger the pending stats button click after a small delay
+      if (pendingStatsButton) {
+        setTimeout(() => {
+          pendingStatsButton.click();
+          pendingStatsButton = null;
+        }, 300);
+      }
+    } else {
+      // ❌ Password wrong
+      showPasswordError();
+    }
+  }
+
+  function showPasswordError() {
+    passwordErrorMessage.classList.add('show');
+    
+    // Shake animation
+    passwordDigits.forEach(input => {
+      input.classList.add('error');
+      input.value = '';
+      input.classList.remove('filled');
+      input.style.color = '#00c8ff';
+    });
+
+    // Remove error class after animation
+    setTimeout(() => {
+      passwordDigits.forEach(input => input.classList.remove('error'));
+    }, 500);
+
+    // Focus on first input
+    passwordDigits[0]?.focus();
+  }
+
+  function showPasswordModal(triggerButton = null) {
+    if (modalAlreadyShown) return;
+    
+    // Store the button that triggered this modal
+    pendingStatsButton = triggerButton;
+    
+    modalAlreadyShown = true;
+    passwordVerified = false;
+    passwordModalOverlay.classList.add('active');
+    
+    // Blur the page content - get ALL content containers
+    const allContent = document.querySelectorAll('.content, .statistics-page, #dailyStatsPage, #monthlyStatsPage, #weeksView, #todayView, #dayLogView');
+    allContent.forEach(el => {
+      if (el && el.style.display !== 'none') {
+        el.classList.add('blurred-content');
+      }
+    });
+    
+    // Reset password inputs
+    passwordDigits.forEach(input => {
+      input.value = '';
+      input.classList.remove('filled', 'error');
+      input.style.color = '#00c8ff';
+    });
+    passwordErrorMessage.classList.remove('show');
+    
+    // Focus on first input after modal appears
+    setTimeout(() => {
+      passwordDigits[0]?.focus();
+    }, 100);
+  }
+
+  function hidePasswordModal() {
+    passwordModalOverlay.classList.remove('active');
+    
+    // Remove blur from page content
+    const allContent = document.querySelectorAll('.content, .statistics-page, #dailyStatsPage, #monthlyStatsPage, #weeksView, #todayView, #dayLogView');
+    allContent.forEach(el => {
+      if (el) {
+        el.classList.remove('blurred-content');
+      }
+    });
+    
+    // Reset the flag after a delay to prevent issues
+    setTimeout(() => {
+      modalAlreadyShown = false;
+    }, 500);
+  }
+
+  // Hide modal when navigating away from stats pages
+  function resetPasswordOnNavigation() {
+    const mainContent = document.getElementById('mainContent');
+    const weeksView = document.getElementById('weeksView');
+    const todayView = document.getElementById('todayView');
+    const dayLogView = document.getElementById('dayLogView');
+    
+    const isOnStatsPage = () => {
+      const dailyStats = document.getElementById('dailyStatsPage');
+      const monthlyStats = document.getElementById('monthlyStatsPage');
+      
+      if (!dailyStats || !monthlyStats) return false;
+      
+      const dailyVisible = dailyStats.style.display !== 'none' && getComputedStyle(dailyStats).display !== 'none';
+      const monthlyVisible = monthlyStats.style.display !== 'none' && getComputedStyle(monthlyStats).display !== 'none';
+      
+      return dailyVisible || monthlyVisible;
+    };
+
+    // Monitor page visibility
+    const checkNavigation = () => {
+      // Check if we're navigating away from stats pages
+      const mainVisible = mainContent && mainContent.style.display !== 'none';
+      const weeksVisible = weeksView && weeksView.style.display !== 'none';
+      const todayVisible = todayView && todayView.style.display !== 'none';
+      const dayVisible = dayLogView && dayLogView.style.display !== 'none';
+      
+      if (mainVisible || weeksVisible || todayVisible || dayVisible) {
+        // We're on a non-stats page, so reset password
+        passwordVerified = false;
+        hidePasswordModal();
+      }
+    };
+
+    // Listen to clicks on navigation buttons
+    const navButtons = document.querySelectorAll('[data-view], #homeButton, #todayBtn, #monthsToggle, #backToWeeksBtn');
+    navButtons.forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', () => {
+          setTimeout(checkNavigation, 100);
+        });
+      }
+    });
+  }
+
+  // Add password gate to daily stats button
+  const dailyStatsBtn = document.querySelector('[data-view="daily"]');
+  if (dailyStatsBtn) {
+    // Replace the handler with password-gated version
+    dailyStatsBtn.addEventListener('click', (e) => {
+      if (!passwordVerified) {
+        e.preventDefault();
+        e.stopPropagation();
+        showPasswordModal(dailyStatsBtn); // Pass the button reference
+        return false;
+      }
+    }, true); // Use capture phase to intercept before other handlers
+  }
+
+  // Add password gate to monthly stats button
+  const monthlyStatsBtn = document.querySelector('[data-view="monthly"]');
+  if (monthlyStatsBtn) {
+    monthlyStatsBtn.addEventListener('click', (e) => {
+      if (!passwordVerified) {
+        e.preventDefault();
+        e.stopPropagation();
+        showPasswordModal(monthlyStatsBtn); // Pass the button reference
+        return false;
+      }
+    }, true); // Use capture phase to intercept before other handlers
+  }
+
+  // Initialize password protection on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    resetPasswordOnNavigation();
+  });
+
+  // Also run on page load if DOM is already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      resetPasswordOnNavigation();
+      setupPasswordGatesForStatistics();
+    });
+  } else {
+    resetPasswordOnNavigation();
+    setupPasswordGatesForStatistics();
+  }
+
+  // 🔐 Function to gate the statistics pages with password protection
+  function setupPasswordGatesForStatistics() {
+    // Get the original click handlers and store them
+    const dailyStatsBtn = document.querySelector('[data-view="daily"]');
+    const monthlyStatsBtn = document.querySelector('[data-view="monthly"]');
+
+    // Create a MutationObserver to catch when stats pages try to display
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const target = mutation.target;
+          
+          // Check if daily stats page is being shown
+          if (target.id === 'dailyStatsPage') {
+            const style = window.getComputedStyle(target);
+            const isVisible = style.display !== 'none' && target.style.display !== 'none';
+            
+            if (isVisible && !passwordVerified) {
+              // Hide the page and show password modal
+              target.style.display = 'none';
+              showPasswordModal();
+            }
+          }
+
+          // Check if monthly stats page is being shown
+          if (target.id === 'monthlyStatsPage') {
+            const style = window.getComputedStyle(target);
+            const isVisible = style.display !== 'none' && target.style.display !== 'none';
+            
+            if (isVisible && !passwordVerified) {
+              // Hide the page and show password modal
+              target.style.display = 'none';
+              showPasswordModal();
+            }
+          }
+        }
+      });
+    });
+
+    // Start observing the stats pages
+    const dailyStatsPage = document.getElementById('dailyStatsPage');
+    const monthlyStatsPage = document.getElementById('monthlyStatsPage');
+    
+    if (dailyStatsPage) {
+      observer.observe(dailyStatsPage, { attributes: true });
+    }
+    if (monthlyStatsPage) {
+      observer.observe(monthlyStatsPage, { attributes: true });
+    }
+
+    // Also intercept button clicks
+    if (dailyStatsBtn) {
+      dailyStatsBtn.addEventListener('click', (e) => {
+        if (!passwordVerified) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Prevent default behavior
+          hideAllViews();
+          showPasswordModal();
+        }
+      }, true);
+    }
+
+    if (monthlyStatsBtn) {
+      monthlyStatsBtn.addEventListener('click', (e) => {
+        if (!passwordVerified) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Prevent default behavior
+          hideAllViews();
+          showPasswordModal();
+        }
+      }, true);
+    }
   }
 </script>
 
