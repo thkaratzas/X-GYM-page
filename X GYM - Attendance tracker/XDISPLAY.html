@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DISPLAYLOOK</title>
+  <title>XDISPLAY</title>
 
   <!-- Νέα γραμματοσειρά -->
    <link rel="preconnect" href="https://script.google.com">
@@ -1156,129 +1156,106 @@ align-self: center;          /* κάθετα στο grid row */
 </div>
 
   <script>
-    const PREV_RANKS_KEY = "previousRanks";
-window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(PREV_RANKS_KEY) || "{}");
-    // Slideshow
-// Slideshow Logic
-let slides = [];
-let currentSlide = 0;
-let slideTimer;
+   const PREV_RANKS_KEY = "previousRanks";
+    window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(PREV_RANKS_KEY) || "{}");
 
-// Οι δικοί σου χρόνοι για φωτό και leaderboard (ms)
-const DURATION_DEFAULT = 500000;    
-const DURATION_LEADERBOARD = 1000000; 
+    let slides = [];
+    let currentSlide = 0;
+    let slideTimer;
 
-function showSlide(index) {
-    clearTimeout(slideTimer);
+    // Χρόνοι σε milliseconds
+    const DURATION_DEFAULT = 500000;    // 500 δευτερόλεπτα για φωτό
+    const DURATION_LEADERBOARD = 1000000; // 1000 δευτερόλεπτα για leaderboard
 
-    // 1. Reset slides και κλείσιμο παλιών βίντεο
-    slides.forEach(s => {
-        s.classList.remove('active');
-        const v = s.querySelector('video');
-        if (v) { 
-            v.pause(); 
-            v.currentTime = 0; 
+    function showSlide(index) {
+        clearTimeout(slideTimer);
+
+        // 1. Καθαρισμός slides και βίντεο
+        slides.forEach(s => {
+            s.classList.remove('active');
+            const v = s.querySelector('video');
+            if (v) { 
+                v.pause(); 
+                v.currentTime = 0; 
+            }
+        });
+
+        const slideEl = slides[index];
+        if (!slideEl) return;
+        slideEl.classList.add('active');
+
+        // 2. Υπολογισμός διάρκειας και έναρξη βίντεο
+        const video = slideEl.querySelector('video');
+        const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
+        let duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
+
+        if (video) {
+            video.muted = true;
+            video.play().catch(e => console.log("Video error:", e));
+
+            if (video.duration) {
+                duration = video.duration * 1000;
+            } else {
+                video.onloadedmetadata = function() {
+                    clearTimeout(slideTimer);
+                    startTimer(video.duration * 1000);
+                };
+                duration = 10000; // Fallback 10 δευτερόλεπτα
+            }
+        } else if (isLeaderboard) {
+            // Animation reset για το leaderboard
+            slideEl.style.setProperty('--rankDelay', '5s');
+            if (typeof retriggerRankAnims === 'function') {
+                setTimeout(() => retriggerRankAnims(slideEl), 80);
+            }
+        }
+
+        // 3. Διαχείριση Ρολογιού
+        const clock = document.getElementById("digitalClock");
+        if (clock) {
+            clock.style.display = isLeaderboard ? "none" : "block";
+        }
+
+        startTimer(duration);
+    }
+
+    function startTimer(ms) {
+        clearTimeout(slideTimer);
+        slideTimer = setTimeout(() => {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }, ms);
+    }
+
+    function retriggerRankAnims(root = document) {
+        root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
+            el.style.animation = 'none';
+            void el.offsetHeight;
+            el.style.animation = '';
+        });
+    }
+
+    // Εκκίνηση Slideshow και Λειτουργιών
+    window.addEventListener("DOMContentLoaded", () => {
+        // Φόρτωση Leaderboard (διατήρηση της δικής σου λογικής)
+        if (typeof getRowsFromMonthlyMemory === 'function') {
+            const initialRows = getRowsFromMonthlyMemory(8);
+            if (initialRows.length) {
+                renderLeaderboardFromRows(initialRows);
+            } else if (typeof populateLeaderboard === 'function') {
+                populateLeaderboard();
+            }
+        }
+
+        if (typeof startRealtimeLeaderboard === 'function') startRealtimeLeaderboard();
+        if (typeof startScanSignalListener === 'function') startScanSignalListener();
+        
+        // Αρχικοποίηση Slides
+        slides = document.querySelectorAll('.slide');
+        if (slides.length > 0) {
+            showSlide(0);
         }
     });
-
-    const slideEl = slides[index];
-    if (!slideEl) return;
-    slideEl.classList.add('active');
-
-    // 2. Υπολογισμός διάρκειας
-    const video = slideEl.querySelector('video');
-    const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
-    
-    let duration = DURATION_DEFAULT;
-
-    if (video) {
-        // Αν είναι βίντεο, το ξεκινάμε
-        video.muted = true;
-        video.play().catch(e => console.log("Video error:", e));
-
-        // Αν έχουμε ήδη τη διάρκεια του βίντεο, τη χρησιμοποιούμε
-        if (video.duration) {
-            duration = video.duration * 1000;
-        } else {
-            // Αν δεν έχει φορτώσει ακόμα η διάρκεια, την παίρνουμε μόλις είναι έτοιμη
-            video.onloadedmetadata = function() {
-                clearTimeout(slideTimer);
-                startTimer(video.duration * 1000);
-            };
-            duration = 10000; // Fallback 10 δευτερόλεπτα
-        }
-    } else if (isLeaderboard) {
-        duration = DURATION_LEADERBOARD;
-        if (typeof retriggerRankAnims === 'function') {
-            setTimeout(() => retriggerRankAnims(slideEl), 80);
-        }
-    }
-
-    // 3. Διαχείριση Ρολογιού
-    const clock = document.getElementById("digitalClock");
-    if (clock) {
-        clock.classList.toggle("hidden", isLeaderboard);
-    }
-
-    startTimer(duration);
-}
-
-// Βοηθητική συνάρτηση για το Timer
-function startTimer(ms) {
-    slideTimer = setTimeout(() => {
-        currentSlide = (currentSlide + 1) % slides.length;
-        showSlide(currentSlide);
-    }, ms);
-}
-  const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
-  document.querySelectorAll('.leaderboard-slide').forEach(s => {
-    s.style.removeProperty('--rankDelay');
-  });
-  if (isLeaderboard) {
-    slideEl.style.setProperty('--rankDelay', '5s');
-  }
-
-  const clock = document.getElementById("digitalClock");
-  if (clock) {
-    clock.classList.toggle("hidden",  isLeaderboard);
-    clock.classList.toggle("visible", !isLeaderboard);
-  }
-
-  const duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
-
-if (isLeaderboard && typeof retriggerRankAnims === 'function') {
-  setTimeout(() => retriggerRankAnims(slideEl), 80);
-}
-
-slideTimer = setTimeout(() => {
-  currentSlide = (currentSlide + 1) % slides.length;
-  showSlide(currentSlide);
-}, duration);
-}
-function retriggerRankAnims(root = document) {
-  root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
-    el.style.animation = 'none';
-    void el.offsetHeight;
-    el.style.animation = '';
-  });
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  // αρχικό render από τη μνήμη του μήνα
-  const initialRows = getRowsFromMonthlyMemory(8);
-  if (initialRows.length) {
-    renderLeaderboardFromRows(initialRows);
-  } else {
-    populateLeaderboard(); // αν θες να γεμίσει με local mock/attendanceData όπως πριν
-  }
-
-  startRealtimeLeaderboard();
-  startScanSignalListener();
-  resetMonthlyDataIfNeeded?.();
-
-  slides = document.querySelectorAll('.slide');
-  showSlide(0);
-});
 
     // Name formatting rules
     function formatName(name) {
