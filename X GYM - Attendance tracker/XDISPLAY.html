@@ -63,38 +63,34 @@ function startScanSignalListener() {
 }
 
 
-async function checkSubscriptionForId(scannedId, attempt = 1) {
+// Μικρό wrapper για να περάσουμε id (και προαιρετικά όνομα)
+async function checkSubscriptionForId(scannedId) {
   if (!scannedId) return;
-
   const loading = showLoadingPopup();
-
   try {
-    const response = await fetch(
+    const res = await fetch(
       "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
       { cache: "no-store" }
     );
-
-    const data = await response.json();
+    const data = await res.json();
     hideLoadingPopup();
 
+    // ✅ ΠΑΝΤΑ από το Sheet:
     const sheetName = String(data.name || "").trim();
+
+    // Αν θες ΜΟΝΟ μικρό όνομα από το Sheet:
     const firstOnly = sheetName.split(/\s+/)[0] || "";
-    const displayName = formatName(firstOnly);
+
+    // 👉 Διάλεξε: α) ακριβώς όπως στο Sheet
+    const displayName = firstOnly;
+
+
 
     showPopup(displayName, !!data.active);
-
-  } catch (error) {
+  } catch (e) {
+    console.error(e);
     hideLoadingPopup();
-    console.warn(`❌ Προσπάθεια #${attempt} απέτυχε:`, error);
-
-    if (attempt < 3) {
-      const delay = 600 * Math.pow(2, attempt - 1); // 600ms, 1200ms, 2400ms
-      setTimeout(() => {
-        checkSubscriptionForId(scannedId, attempt + 1);
-      }, delay);
-    } else {
-      showErrorPopup("⚠️ Δεν μπορέσαμε να φορτώσουμε την κατάσταση της συνδρομής σας.");
-    }
+    showPopup("Σφάλμα", false);
   }
 }
   db.settings({
@@ -1124,15 +1120,22 @@ align-self: center;          /* κάθετα στο grid row */
   <div id="digitalClock"></div>
 
  <div class="slideshow-container">
-       <div class="slide portrait" style="background-image: url('https://i.postimg.cc/nc4RB2Fs/IMG-5142.jpg')"></div>
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/J0B3rrnD/IMG-5141.jpg')"></div>
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/rpFP84LD/IMG-5143-2.jpg')"></div>
-    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjMFMJbN/IMG-4936.jpg')"></div>
-        <div class="slide portrait" style="background-image: url('https://i.postimg.cc/9XrB1x04/IMG-4937.jpg')"></div>
-    <div class="slide" style="background-image: url('https://i.postimg.cc/L4BQR5R8/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')"></div>
-        <div class="slide" style="background-image: url('https://i.postimg.cc/631b9KMG/Your-paragraph-text-2.jpg')"></div>
-    <div class="slide" style="background-image: url('https://i.postimg.cc/02S01bpP/IMG-4933.jpg')"></div>
-      <div class="slide" style="background-image: url('https://i.postimg.cc/SKZpMBLK/IMG-4926.jpg')"></div>
+    <div class="slide">
+        <video autoplay muted loop playsinline webkit-playsinline preload="auto" 
+               style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <source src="https://raw.githubusercontent.com/thkaratzas/X-GYM-page/main/PromoVideo1.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <div class="slide">
+        <video autoplay muted loop playsinline webkit-playsinline preload="auto" 
+               style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <source src="https://raw.githubusercontent.com/thkaratzas/X-GYM-page/main/PromoVideo2.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    </div>
+
 <div class="slide leaderboard-slide">
   <div class="xlb-safe">
     <div class="xlb-panel">
@@ -1152,7 +1155,7 @@ let slides = [];
 let currentSlide = 0;
 let slideTimer;
 // πόσο μένουν τα υπόλοιπα & πόσο ο leaderboard (ms)
-const DURATION_DEFAULT    = 60000;   // 5s
+const DURATION_DEFAULT    = 500000;   // 5s
 const DURATION_LEADERBOARD = 1000000; // 15s (ό,τι θες)
 function showSlide(index) {
   clearTimeout(slideTimer);
@@ -1217,7 +1220,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!name || typeof name !== "string") return name;
       name = name.trim().toUpperCase();
 
-      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ", "ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ","ΘΑΝΟΣ"];
+      const exceptions = ["ΣΤΕΛΙΟΣ", "ΣΤΕΡΓΙΟΣ","ΣΤΑΥΡΟΣ", "ΚΥΡΙΑΚΟΣ","ΜΙΛΤΟΣ", "ΧΡΗΣΤΟΣ", "ΣΤΡΑΤΟΣ", "ΠΑΥΛΟΣ", "ΓΙΩΡΓΟΣ","ΝΙΚΟΣ","ΜΑΝΟΣ","ΑΛΕΚΟΣ","ΘΑΝΟΣ"];
 
       if (name.endsWith("ΟΣ")) {
         if (exceptions.includes(name)) {
@@ -1237,7 +1240,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
       return name;
     }
-
 
 function showPopup(name, isActive) {
   // Καλημέρα / Καλησπέρα με βάση την ώρα
@@ -1285,35 +1287,8 @@ function showPopup(name, isActive) {
   }, 6300);
 }
 
-   function showErrorPopup(message = "Δεν μπορέσαμε να επαληθεύσουμε την κατάσταση της συνδρομής σας. Η παρουσία σας καταγράφηκε κανονικά, Καλή προπόνηση!") {
-      const overlay = document.createElement("div");
-      overlay.id = "error-popup";
-      overlay.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(200, 0, 0, 0.92);
-        color: #fff;
-        padding: 12px 20px;
-        border-radius: 10px;
-        font-size: 1.05rem;
-        font-weight: 600;
-        z-index: 9999;
-        box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
-        pointer-events: none;
-        opacity: 1;
-        animation: fadeInOut 5s ease-in-out forwards;
-      `;
-      overlay.textContent = message;
-
-      document.body.appendChild(overlay);
-
-      setTimeout(() => overlay.remove(), 6700);
-    }
-
   function getMonthlyCounts() {
-  const raw = localStorage.getItem("attendanceData"); 
+  const raw = localStorage.getItem("attendanceData"); // ✅ ΠΡΟΣΟΧΗ εδώ
   if (!raw) return {};
 
   const data = JSON.parse(raw);
@@ -1885,6 +1860,35 @@ function hideLoadingPopup() {
   el.style.opacity = "0";
   el.style.transition = "opacity 0.3s ease";
   setTimeout(() => el.remove(), 300);
+}
+
+    // Subscription check
+    // Subscription check
+async function checkSubscriptionForId(scannedId) {
+  if (!scannedId) return;
+
+  const loading = showLoadingPopup();
+
+  try {
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbzxFrrfTz9LGux2WxNJGdxAabKC5ca9fPNSYNLTejyMrVn2qCljaFb4_nPoNmSrE1TzUQ/exec?id=" + encodeURIComponent(scannedId),
+      { cache: "no-store" }
+    );
+
+    const data = await response.json();
+    hideLoadingPopup();
+
+    // ΠΑΝΤΑ από Sheet
+    const sheetName = String(data.name || "").trim();
+    const firstOnly = sheetName.split(/\s+/)[0] || "";
+    const displayedName = formatName(firstOnly); // ή βάλε κατευθείαν firstOnly αν δεν θες vocative
+
+    showPopup(displayedName, !!data.active);
+  } catch (error) {
+    console.error("❌ Σφάλμα κατά το fetch:", error);
+    hideLoadingPopup();
+    showPopup("⚠️ Σφάλμα", false);
+  }
 }
 
 function updateClock() {
