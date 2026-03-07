@@ -1119,99 +1119,143 @@ align-self: center;          /* κάθετα στο grid row */
 <body>
   <div id="digitalClock"></div>
 
-  <div class="slideshow-container">
-       <div class="slide portrait" style="background-image: url('https://i.postimg.cc/nc4RB2Fs/IMG-5142.jpg')"></div>
+ <div class="slideshow-container">
+    <div class="slide">
+        <video autoplay muted playsinline webkit-playsinline preload="auto" 
+               style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <source src="https://raw.githubusercontent.com/thkaratzas/X-GYM-page/main/PromoVideo1.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <div class="slide">
+        <video autoplay muted playsinline webkit-playsinline preload="auto" 
+               style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            <source src="https://raw.githubusercontent.com/thkaratzas/X-GYM-page/main/PromoVideo2.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/nc4RB2Fs/IMG-5142.jpg')"></div>
     <div class="slide portrait" style="background-image: url('https://i.postimg.cc/J0B3rrnD/IMG-5141.jpg')"></div>
     <div class="slide portrait" style="background-image: url('https://i.postimg.cc/mrv1KRPF/8758750B-3C95-478D-81EF-B78F00B42027.jpg')"></div>
-        <div class="slide portrait" style="background-image: url('https://i.postimg.cc/W1QWJyRf/IMG_6126.jpg')"></div>
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/W1QWJyRf/IMG_6126.jpg')"></div>
     <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjMFMJbN/IMG-4936.jpg')"></div>
-        <div class="slide portrait" style="background-image: url('https://i.postimg.cc/9XrB1x04/IMG-4937.jpg')"></div>
-            <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjSfsr8K/IMG_6128.jpg')"></div>
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/9XrB1x04/IMG-4937.jpg')"></div>
+    <div class="slide portrait" style="background-image: url('https://i.postimg.cc/wjSfsr8K/IMG_6128.jpg')"></div>
     <div class="slide" style="background-image: url('https://i.postimg.cc/L4BQR5R8/processed-2-DA30989-5818-4-DF0-A5-A1-A9-A04-F93091-B.jpg')"></div>
-        <div class="slide" style="background-image: url('https://i.postimg.cc/HkfZ7NGZ/IMG_6124.jpg')"></div>
-        <div class="slide" style="background-image: url('https://i.postimg.cc/631b9KMG/Your-paragraph-text-2.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/HkfZ7NGZ/IMG_6124.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/631b9KMG/Your-paragraph-text-2.jpg')"></div>
     <div class="slide" style="background-image: url('https://i.postimg.cc/02S01bpP/IMG-4933.jpg')"></div>
-      <div class="slide" style="background-image: url('https://i.postimg.cc/SKZpMBLK/IMG-4926.jpg')"></div>
+    <div class="slide" style="background-image: url('https://i.postimg.cc/SKZpMBLK/IMG-4926.jpg')"></div>
 
-<div class="slide leaderboard-slide">
-  <div class="xlb-safe">
-    <div class="xlb-panel">
-      <!-- ΟΛΟ το περιεχόμενο του πίνακα σου -->
+    <div class="slide leaderboard-slide">
+        <div class="xlb-safe">
+            <div class="xlb-panel">
+                </div>
+        </div>
     </div>
-  </div>
 </div>
 
-    <!-- ⬇️ Το Leaderboard θα προστεθεί εδώ από την populateLeaderboard() -->
-  </div>
-
   <script>
-    const PREV_RANKS_KEY = "previousRanks";
-window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(PREV_RANKS_KEY) || "{}");
-    // Slideshow
-let slides = [];
-let currentSlide = 0;
-let slideTimer;
-// πόσο μένουν τα υπόλοιπα & πόσο ο leaderboard (ms)
-const DURATION_DEFAULT    = 500000;   // 5s
-const DURATION_LEADERBOARD = 1000000; // 15s (ό,τι θες)
-function showSlide(index) {
-  clearTimeout(slideTimer);
+   const PREV_RANKS_KEY = "previousRanks";
+    window.previousRanks = window.previousRanks || JSON.parse(localStorage.getItem(PREV_RANKS_KEY) || "{}");
 
-  slides.forEach(s => s.classList.remove('active'));
+    let slides = [];
+    let currentSlide = 0;
+    let slideTimer;
 
-  const slideEl = slides[index];
-  slideEl.classList.add('active');
+    // Χρόνοι σε milliseconds
+    const DURATION_DEFAULT = 500000;    // 500 δευτερόλεπτα για φωτό
+    const DURATION_LEADERBOARD = 1000000; // 1000 δευτερόλεπτα για leaderboard
 
-  const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
-  document.querySelectorAll('.leaderboard-slide').forEach(s => {
-    s.style.removeProperty('--rankDelay');
-  });
-  if (isLeaderboard) {
-    slideEl.style.setProperty('--rankDelay', '5s');
-  }
+    function showSlide(index) {
+        clearTimeout(slideTimer);
 
-  const clock = document.getElementById("digitalClock");
-  if (clock) {
-    clock.classList.toggle("hidden",  isLeaderboard);
-    clock.classList.toggle("visible", !isLeaderboard);
-  }
+        // 1. Καθαρισμός slides και βίντεο
+        slides.forEach(s => {
+            s.classList.remove('active');
+            const v = s.querySelector('video');
+            if (v) { 
+                v.pause(); 
+                v.currentTime = 0; 
+            }
+        });
 
-  const duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
+        const slideEl = slides[index];
+        if (!slideEl) return;
+        slideEl.classList.add('active');
 
-if (isLeaderboard && typeof retriggerRankAnims === 'function') {
-  setTimeout(() => retriggerRankAnims(slideEl), 80);
-}
+        // 2. Υπολογισμός διάρκειας και έναρξη βίντεο
+        const video = slideEl.querySelector('video');
+        const isLeaderboard = slideEl.classList.contains("leaderboard-slide");
+        let duration = isLeaderboard ? DURATION_LEADERBOARD : DURATION_DEFAULT;
 
-slideTimer = setTimeout(() => {
-  currentSlide = (currentSlide + 1) % slides.length;
-  showSlide(currentSlide);
-}, duration);
-}
-function retriggerRankAnims(root = document) {
-  root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
-    el.style.animation = 'none';
-    void el.offsetHeight;
-    el.style.animation = '';
-  });
-}
+        if (video) {
+            video.muted = true;
+            video.play().catch(e => console.log("Video error:", e));
 
-window.addEventListener("DOMContentLoaded", () => {
-  // αρχικό render από τη μνήμη του μήνα
-  const initialRows = getRowsFromMonthlyMemory(8);
-  if (initialRows.length) {
-    renderLeaderboardFromRows(initialRows);
-  } else {
-    populateLeaderboard(); // αν θες να γεμίσει με local mock/attendanceData όπως πριν
-  }
+            if (video.duration) {
+                duration = video.duration * 1000;
+            } else {
+                video.onloadedmetadata = function() {
+                    clearTimeout(slideTimer);
+                    startTimer(video.duration * 1000);
+                };
+                duration = 10000; // Fallback 10 δευτερόλεπτα
+            }
+        } else if (isLeaderboard) {
+            // Animation reset για το leaderboard
+            slideEl.style.setProperty('--rankDelay', '5s');
+            if (typeof retriggerRankAnims === 'function') {
+                setTimeout(() => retriggerRankAnims(slideEl), 80);
+            }
+        }
 
-  startRealtimeLeaderboard();
-  startScanSignalListener();
-  resetMonthlyDataIfNeeded?.();
+        // 3. Διαχείριση Ρολογιού
+        const clock = document.getElementById("digitalClock");
+        if (clock) {
+            clock.style.display = isLeaderboard ? "none" : "block";
+        }
 
-  slides = document.querySelectorAll('.slide');
-  showSlide(0);
-});
+        startTimer(duration);
+    }
 
+    function startTimer(ms) {
+        clearTimeout(slideTimer);
+        slideTimer = setTimeout(() => {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }, ms);
+    }
+
+    function retriggerRankAnims(root = document) {
+        root.querySelectorAll('.xlb-item.rank-up').forEach(el => {
+            el.style.animation = 'none';
+            void el.offsetHeight;
+            el.style.animation = '';
+        });
+    }
+
+    // Εκκίνηση Slideshow και Λειτουργιών
+    window.addEventListener("DOMContentLoaded", () => {
+        // Φόρτωση Leaderboard (διατήρηση της δικής σου λογικής)
+        if (typeof getRowsFromMonthlyMemory === 'function') {
+            const initialRows = getRowsFromMonthlyMemory(8);
+            if (initialRows.length) {
+                renderLeaderboardFromRows(initialRows);
+            } else if (typeof populateLeaderboard === 'function') {
+                populateLeaderboard();
+            }
+        }
+
+        if (typeof startRealtimeLeaderboard === 'function') startRealtimeLeaderboard();
+        if (typeof startScanSignalListener === 'function') startScanSignalListener();
+        
+        // Αρχικοποίηση Slides
+        slides = document.querySelectorAll('.slide');
+        if (slides.length > 0) {
+            showSlide(0);
+        }
+    });
     // Name formatting rules
     function formatName(name) {
       if (!name || typeof name !== "string") return name;
